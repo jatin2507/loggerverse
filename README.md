@@ -1,25 +1,24 @@
 # Loggerverse
 
-A self-contained, real-time observability platform for Node.js with an embedded HBS-based dashboard.
+A self-contained, real-time observability platform for Node.js with an embedded dashboard, AI-powered analysis, and comprehensive logging capabilities.
 
-## Features
+## 🚀 Features
 
-- **🚀 High Performance**: Asynchronous, non-blocking logging with worker thread support
-- **📊 Real-time Dashboard**: Beautiful HBS-based web interface with live log streaming
+- **🔥 High Performance**: Asynchronous, non-blocking logging with worker thread support
+- **📊 Real-time Dashboard**: Beautiful web interface with live log streaming and authentication
 - **📧 Smart Notifications**: Email alerts with error grouping and rate limiting
-- **🤖 AI Analysis**: Optional OpenAI/Anthropic integration for error analysis
-- **📁 File Management**: Log rotation, compression, and archiving (local/S3)
+- **🤖 AI Analysis**: Optional OpenAI/Anthropic integration for intelligent error analysis
+- **📁 Cloud Storage**: Automatic log archiving to AWS S3 with lifecycle management
 - **📈 System Metrics**: Real-time CPU, memory, and event loop monitoring
 - **🔒 Secure by Default**: Data sanitization, authentication, and audit logging
 - **⚙️ Zero Configuration**: Works out of the box with sensible defaults
 
-## Quick Start
+## 📦 Quick Start
 
 ```bash
 npm install loggerverse
 ```
 
-### Basic Usage
 ```javascript
 import { createLogger } from 'loggerverse';
 
@@ -28,28 +27,16 @@ const logger = createLogger();
 
 // Start logging
 logger.info('Hello, World!');
-logger.warn('This is a warning');
 logger.error('Something went wrong', { error: new Error('Oops'), userId: 123 });
-logger.debug('Debug information', { requestId: 'req-456' });
-logger.fatal('Critical system failure', { component: 'database' });
 
 // Context-aware logging
 logger.runInContext({ requestId: 'req-789', userId: 'user-123' }, () => {
   logger.info('Processing user request');
   logger.warn('Validation warning');
-  // All logs within this scope will include the context
-});
-
-// Gracefully close when done
-process.on('SIGINT', () => {
-  logger.close();
-  process.exit(0);
 });
 ```
 
-## Configuration
-
-### Complete Configuration Example
+## 🛠️ Configuration
 
 Create a `loggerverse.config.ts` file:
 
@@ -58,235 +45,78 @@ import { defineConfig } from 'loggerverse';
 
 export default defineConfig({
   level: 'info',
-  interceptConsole: true, // Capture console.log calls
-
-  // Data sanitization
-  sanitization: {
-    redactKeys: [
-      'password',
-      'secret',
-      'token',
-      'apiKey',
-      /credit.*card/i,
-      /ssn/i
-    ],
-    maskCharacter: '*'
-  },
+  interceptConsole: true,
 
   transports: [
-    // Console transport with pretty formatting
     {
       type: 'console',
       format: 'pretty',
       colors: true,
-      level: 'debug'
     },
-
-    // File transport with rotation
     {
       type: 'file',
       path: './logs/app.log',
-      maxSize: '10MB',
+      maxSize: '50MB',
       rotationPeriod: '24h',
       compress: true,
-      retentionDays: 30,
-      level: 'info'
     },
-
-    // Email transport for errors
     {
       type: 'email',
       level: 'error',
-      recipients: ['admin@example.com', 'dev-team@example.com'],
-      rateLimit: { count: 10, intervalMinutes: 5 },
-      grouping: {
-        enabled: true,
-        intervalMinutes: 15,
-        maxGroupSize: 20
-      },
+      recipients: ['admin@example.com'],
       provider: {
         type: 'smtp',
         host: 'smtp.gmail.com',
         port: 587,
-        secure: false,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
       }
     }
   ],
 
   services: [
-    // Dashboard service
     {
       type: 'dashboard',
       port: 3001,
       path: '/logs',
       auth: {
-        users: [
-          { username: 'admin', password: 'secure-password', role: 'admin' },
-          { username: 'viewer', password: 'viewer-pass', role: 'viewer' }
-        ]
+        users: [{ username: 'admin', password: 'secure-password', role: 'admin' }]
       }
     },
-
-    // System metrics collection
     {
       type: 'metrics',
-      interval: 5000 // Collect every 5 seconds
+      interval: 10000
     },
-
-    // AI analysis service
     {
       type: 'ai',
       provider: 'openai',
       apiKey: process.env.OPENAI_API_KEY,
       model: 'gpt-3.5-turbo',
-      analysisThreshold: 'error' // Only analyze errors and above
-    },
-
-    // Archive service for S3
-    {
-      type: 'archive',
-      schedule: '0 2 * * *', // Daily at 2 AM
-      provider: {
-        type: 's3',
-        bucket: 'my-log-bucket',
-        region: 'us-west-2',
-        retentionDays: 90,
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-      }
+      analysisThreshold: 'error'
     }
   ]
 });
 ```
 
-## Dashboard
+## 📚 Documentation
 
-Access the real-time dashboard at `http://localhost:3001/logs` (or your configured port/path):
+### Core Concepts
+- **[Configuration Guide](docs/guides/configuration.md)** - Complete configuration reference
+- **[API Reference](docs/api/logger.md)** - Full API documentation
 
-- **Live Log Streaming**: Real-time log entries with filtering and search
-- **System Metrics**: CPU, memory, and event loop monitoring
-- **Authentication**: Secure access with user roles
-- **Mobile Responsive**: Works on all devices
+### Transports
+- **[Console Transport](docs/transports/console.md)** - Terminal/console output
+- **[File Transport](docs/transports/file.md)** - File logging with rotation
+- **[Email Transport](docs/transports/email.md)** - Email notifications via SMTP/SES
 
-## Transports
+### Services
+- **[Dashboard Service](docs/services/dashboard.md)** - Real-time web dashboard
+- **[Metrics Service](docs/services/metrics.md)** - System and custom metrics
+- **[AI Analysis Service](docs/services/ai.md)** - Intelligent error analysis
+- **[Archive Service](docs/services/archive.md)** - Cloud storage and archiving
 
-### Console Transport
-```typescript
-{
-  type: 'console',
-  format: 'pretty', // or 'json'
-  colors: true,
-  level: 'info'
-}
-```
+## 🎯 Use Cases
 
-### File Transport
-```typescript
-{
-  type: 'file',
-  path: './logs/app.log',
-  maxSize: '10MB',
-  rotationPeriod: '24h',
-  compress: true,
-  retentionDays: 30
-}
-```
-
-### Email Transport
-```typescript
-{
-  type: 'email',
-  level: 'error',
-  recipients: ['admin@example.com', 'dev-team@example.com'],
-  rateLimit: { count: 10, intervalMinutes: 5 },
-  grouping: {
-    enabled: true,
-    intervalMinutes: 15,
-    maxGroupSize: 20
-  },
-  provider: {
-    type: 'smtp',
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  }
-}
-
-// AWS SES Provider Example
-{
-  type: 'email',
-  level: 'error',
-  recipients: ['admin@example.com'],
-  rateLimit: { count: 5, intervalMinutes: 10 },
-  provider: {
-    type: 'ses',
-    region: 'us-east-1',
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    from: 'noreply@yourapp.com'
-  }
-}
-```
-
-## Services
-
-### Dashboard Service
-```typescript
-{
-  type: 'dashboard',
-  port: 3001,
-  path: '/logs',
-  auth: {
-    users: [
-      { username: 'admin', password: 'password', role: 'admin' }
-    ]
-  }
-}
-```
-
-### Metrics Service
-```typescript
-{
-  type: 'metrics',
-  interval: 5000 // Collect every 5 seconds
-}
-```
-
-### AI Analysis Service
-```typescript
-{
-  type: 'ai',
-  provider: 'openai', // or 'anthropic'
-  apiKey: process.env.OPENAI_API_KEY,
-  model: 'gpt-3.5-turbo'
-}
-```
-
-### Archive Service
-```typescript
-{
-  type: 'archive',
-  schedule: '0 2 * * *', // Daily at 2 AM
-  provider: {
-    type: 's3',
-    bucket: 'my-log-bucket',
-    region: 'us-west-2',
-    retentionDays: 90
-  }
-}
-```
-
-## Advanced Usage Examples
-
-### Express.js Integration
+### Express.js Application
 ```javascript
 import express from 'express';
 import { createLogger } from 'loggerverse';
@@ -294,39 +124,22 @@ import { createLogger } from 'loggerverse';
 const app = express();
 const logger = createLogger();
 
-// Middleware for request logging
 app.use((req, res, next) => {
   const requestId = Math.random().toString(36).substr(2, 9);
-
-  logger.runInContext({
-    requestId,
-    method: req.method,
-    url: req.url,
-    userAgent: req.get('User-Agent')
-  }, () => {
-    logger.info('Incoming request');
-
-    // All logs within request handlers will include this context
+  logger.runInContext({ requestId, method: req.method, url: req.url }, () => {
+    logger.info('Request received');
     req.logger = logger;
     next();
   });
 });
 
-// Route handler
 app.get('/api/users/:id', async (req, res) => {
   try {
     req.logger.info('Fetching user', { userId: req.params.id });
-
-    // Simulate database call
     const user = await getUserById(req.params.id);
-
-    req.logger.info('User fetched successfully');
     res.json(user);
   } catch (error) {
-    req.logger.error('Failed to fetch user', {
-      userId: req.params.id,
-      error: error.message
-    });
+    req.logger.error('Failed to fetch user', { userId: req.params.id, error });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -336,137 +149,146 @@ app.listen(3000, () => {
 });
 ```
 
-### Database Integration Example
+### Microservices with Metrics
 ```javascript
 import { createLogger } from 'loggerverse';
-import mysql from 'mysql2/promise';
 
-const logger = createLogger();
+const logger = createLogger({
+  services: [
+    {
+      type: 'metrics',
+      customMetrics: [
+        { name: 'api_requests_total', type: 'counter' },
+        { name: 'response_time_ms', type: 'histogram' },
+        { name: 'active_connections', type: 'gauge' }
+      ]
+    }
+  ]
+});
 
-class DatabaseService {
-  constructor() {
-    this.pool = mysql.createPool({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'myapp',
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
-  }
-
-  async query(sql, params = []) {
-    const startTime = Date.now();
+class PaymentService {
+  async processPayment(amount, currency) {
+    const timer = logger.startTimer('payment_duration');
 
     try {
-      logger.debug('Executing SQL query', {
-        sql: sql.substring(0, 100) + '...',
-        paramCount: params.length
-      });
+      logger.incrementCounter('payments_total', { currency, status: 'attempted' });
 
-      const [results] = await this.pool.execute(sql, params);
-      const duration = Date.now() - startTime;
+      const result = await this.gateway.charge(amount, currency);
 
-      logger.info('Query executed successfully', {
-        duration,
-        rowCount: Array.isArray(results) ? results.length : 1
-      });
+      logger.incrementCounter('payments_total', { currency, status: 'success' });
+      logger.info('Payment processed', { amount, currency, transactionId: result.id });
 
-      return results;
+      return result;
     } catch (error) {
-      const duration = Date.now() - startTime;
-
-      logger.error('Query execution failed', {
-        sql: sql.substring(0, 100) + '...',
-        duration,
-        error: error.message,
-        code: error.code
-      });
-
+      logger.incrementCounter('payments_total', { currency, status: 'failed' });
+      logger.error('Payment failed', { amount, currency, error });
       throw error;
+    } finally {
+      timer();
     }
   }
 }
-
-// Usage
-const db = new DatabaseService();
-
-async function getUser(id) {
-  return logger.runInContext({ operation: 'getUser', userId: id }, async () => {
-    logger.info('Starting user lookup');
-    const user = await db.query('SELECT * FROM users WHERE id = ?', [id]);
-    logger.info('User lookup completed');
-    return user[0];
-  });
-}
 ```
 
-### Error Handling and Monitoring
+## 🔧 Environment Variables
+
+```bash
+# Dashboard
+DASHBOARD_PORT=3001
+ADMIN_PASSWORD=secure-password-123
+
+# Email Notifications
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# AI Analysis
+OPENAI_API_KEY=sk-your-openai-key
+
+# AWS (for archiving)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+```
+
+## 🎨 Dashboard
+
+Access the real-time dashboard at `http://localhost:3001/logs`:
+
+- **Live Log Streaming** with filtering and search
+- **System Metrics** monitoring (CPU, memory, event loop)
+- **User Authentication** with role-based access
+- **Mobile Responsive** design
+- **Real-time Alerts** and notifications
+
+## 🤖 AI-Powered Analysis
+
+Get intelligent insights from your logs:
+
 ```javascript
-import { createLogger } from 'loggerverse';
-
-const logger = createLogger();
-
-// Global error handlers
-process.on('uncaughtException', (error) => {
-  logger.fatal('Uncaught Exception', {
-    error: error.message,
-    stack: error.stack,
-    pid: process.pid
-  });
-  process.exit(1);
+// Automatic analysis for errors
+logger.error('Database connection timeout', {
+  host: 'db.example.com',
+  timeout: 30000
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logger.fatal('Unhandled Promise Rejection', {
-    reason: reason?.message || reason,
-    promise: promise.toString()
-  });
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('Received SIGTERM, shutting down gracefully');
-
-  // Close logger and all transports
-  logger.close().then(() => {
-    process.exit(0);
-  });
-});
-
-// Custom error class with logging
-class AppError extends Error {
-  constructor(message, statusCode = 500, context = {}) {
-    super(message);
-    this.statusCode = statusCode;
-    this.context = context;
-
-    logger.error('Application Error', {
-      message: this.message,
-      statusCode: this.statusCode,
-      context: this.context,
-      stack: this.stack
-    });
-  }
-}
-
-// Usage
-try {
-  throw new AppError('User not found', 404, { userId: 123 });
-} catch (error) {
-  // Error already logged in constructor
-}
+// AI provides analysis like:
+// "Connection pool exhaustion detected. Recommendations:
+// 1. Increase connection pool size
+// 2. Implement connection retry logic
+// 3. Monitor database performance"
 ```
 
-## Environment Variables
+## 📊 Metrics Collection
 
-- `LOGVERSE_DEBUG=true` - Enable internal debugging
-- `LOGVERSE_JWT_SECRET` - JWT secret for dashboard authentication
-- `OPENAI_API_KEY` - OpenAI API key for AI analysis
-- `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` - SMTP configuration
+Track application performance:
 
-## Development
+```javascript
+// Built-in system metrics
+logger.on('metrics:update', (metrics) => {
+  console.log('CPU:', metrics.cpu.total + '%');
+  console.log('Memory:', metrics.memory.heapUsed);
+});
+
+// Custom business metrics
+logger.incrementCounter('orders_total', { status: 'completed' });
+logger.setGauge('queue_size', 42);
+logger.recordHistogram('request_duration', 150);
+```
+
+## 🏗️ Architecture
+
+Loggerverse is built with a modular architecture:
+
+- **Core Logger**: Event-driven logging engine
+- **Transports**: Pluggable output destinations
+- **Services**: Long-running background services
+- **Dashboard**: Real-time web interface
+- **AI Integration**: Optional intelligent analysis
+
+## 🔒 Security
+
+- **Data Sanitization**: Automatic removal of sensitive data
+- **Authentication**: Secure dashboard access
+- **Audit Logging**: Track all administrative actions
+- **Rate Limiting**: Prevent log flooding
+- **Input Validation**: Protect against injection attacks
+
+## 🚀 Performance
+
+- **Asynchronous I/O**: Non-blocking operations
+- **Worker Threads**: CPU-intensive tasks offloaded
+- **Buffering**: Optimized write operations
+- **Compression**: Efficient storage
+- **Memory Management**: Automatic cleanup
+
+## 📈 Production Ready
+
+- **High Availability**: Graceful degradation
+- **Monitoring**: Built-in health checks
+- **Scaling**: Horizontal scaling support
+- **Compliance**: Data retention policies
+- **Error Recovery**: Automatic retry mechanisms
+
+## 🛠️ Development
 
 ```bash
 # Install dependencies
@@ -475,49 +297,28 @@ npm install
 # Run tests
 npm test
 
-# Build
+# Build project
 npm run build
 
 # Run linting
 npm run lint
 ```
 
-## API Reference
-
-### createLogger(config?)
-Creates and initializes a logger instance.
-
-### logger.info(message, meta?)
-Log an info message.
-
-### logger.error(message, meta?)
-Log an error message.
-
-### logger.debug(message, meta?)
-Log a debug message.
-
-### logger.warn(message, meta?)
-Log a warning message.
-
-### logger.fatal(message, meta?)
-Log a fatal message.
-
-### logger.runInContext(context, fn)
-Run a function with additional context attached to all logs.
-
-### logger.close()
-Gracefully close the logger and all transports.
-
-## License
+## 📄 License
 
 MIT
 
-## Contributing
+## 🤝 Contributing
 
 Contributions welcome! Please read our contributing guidelines and submit pull requests to our repository.
 
-## Support
+## 🔗 Links
 
-- 📖 [Documentation](https://github.com/jatin2507/loggerverse)
-- 🐛 [Issue Tracker](https://github.com/jatin2507/loggerverse/issues)
-- 💬 [Discussions](https://github.com/jatin2507/loggerverse/discussions)
+- **📖 [Complete Documentation](docs/)** - Comprehensive guides and API reference
+- **🐛 [Issue Tracker](https://github.com/jatin2507/loggerverse/issues)** - Report bugs and request features
+- **💬 [Discussions](https://github.com/jatin2507/loggerverse/discussions)** - Community support and questions
+- **📦 [NPM Package](https://www.npmjs.com/package/loggerverse)** - Install from npm registry
+
+---
+
+**⭐ Star this repo if you find it helpful!**

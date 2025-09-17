@@ -87,9 +87,8 @@
         let isConnected = false;
 
         function initSocket() {
-            const token = localStorage.getItem('loggerverse_token');
             socket = io('{{socketPath}}', {
-                auth: { token },
+                withCredentials: true, // Include cookies
                 path: '{{path}}/socket.io/'
             });
 
@@ -118,26 +117,24 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('loggerverse_token');
+        async function logout() {
+            try {
+                await fetch('{{path}}/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
             window.location.href = '{{path}}/login';
         }
 
         // Initialize socket on page load
         document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('loggerverse_token');
-            if (token && window.location.pathname !== '{{path}}/login') {
+            if (window.location.pathname !== '{{path}}/login') {
                 initSocket();
             }
         });
-
-        // Auto-refresh token
-        setInterval(() => {
-            const token = localStorage.getItem('loggerverse_token');
-            if (token) {
-                // Could implement token refresh here
-            }
-        }, 60000); // Check every minute
     </script>
     <script src="{{path}}/static/js/dashboard.js"></script>
 </body>

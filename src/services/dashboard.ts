@@ -6,6 +6,7 @@ import path from 'path';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import Database from 'better-sqlite3';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import type {
   Service,
@@ -114,6 +115,7 @@ export class DashboardService implements Service {
     // Middleware
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(cookieParser());
     this.app.use(`${this.config.path}/static`, express.static(publicPath));
 
     // Authentication middleware
@@ -186,7 +188,21 @@ export class DashboardService implements Service {
         'LOGIN'
       );
 
+      // Set token as HTTP-only cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
       res.json({ token, user: { username: user.username, role: user.role } });
+    });
+
+    // Logout API
+    router.post('/api/auth/logout', (req: any, res: any) => {
+      res.clearCookie('token');
+      res.json({ message: 'Logged out successfully' });
     });
 
     // Dashboard main page
@@ -252,13 +268,25 @@ export class DashboardService implements Service {
     });
 
     this.io.use((socket, next) => {
-      const token = socket.handshake.auth.token;
+      // Extract token from cookies in handshake headers
+      const cookies = socket.handshake.headers.cookie;
+      let token = null;
+
+      if (cookies) {
+        const tokenMatch = cookies.match(/token=([^;]+)/);
+        token = tokenMatch ? tokenMatch[1] : null;
+      }
+
+      if (!token) {
+        return next(new Error('Authentication error: No token provided'));
+      }
+
       try {
         const decoded = jwt.verify(token, this.jwtSecret) as any;
         (socket as any).user = decoded;
         next();
       } catch (error) {
-        next(new Error('Authentication error'));
+        next(new Error('Authentication error: Invalid token'));
       }
     });
 

@@ -95,6 +95,7 @@
                             headers: {
                                 'Content-Type': 'application/json',
                             },
+                            credentials: 'include', // Include cookies
                             body: JSON.stringify(this.form)
                         });
 
@@ -104,8 +105,9 @@
                             throw new Error(data.error || 'Login failed');
                         }
 
-                        localStorage.setItem('loggerverse_token', data.token);
-                        localStorage.setItem('loggerverse_user', JSON.stringify(data.user));
+                        // Token is now stored as HTTP-only cookie, no need for localStorage
+                        // localStorage.setItem('loggerverse_token', data.token);
+                        // localStorage.setItem('loggerverse_user', JSON.stringify(data.user));
 
                         window.location.href = '{{path}}/';
                     } catch (error) {
@@ -117,11 +119,18 @@
             }
         }
 
-        // Check if already logged in
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('loggerverse_token');
-            if (token) {
-                window.location.href = '{{path}}/';
+        // Check if already logged in by making a test request
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('{{path}}/api/logs', {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    // Already authenticated, redirect to dashboard
+                    window.location.href = '{{path}}/';
+                }
+            } catch (error) {
+                // Not authenticated or error, stay on login page
             }
         });
     </script>
