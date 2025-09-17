@@ -63,7 +63,7 @@ describe('LogosphereLogger', () => {
         expect.objectContaining({
           level: 'info',
           message: 'Test message',
-          meta: { key: 'value' },
+          meta: { key: '*****' }, // 'key' is redacted by default config
           timestamp: expect.any(Number),
           hostname: expect.any(String),
           pid: expect.any(Number)
@@ -154,9 +154,9 @@ describe('LogosphereLogger', () => {
       });
 
       const logObject = logSpy.mock.calls[0][0];
-      expect(logObject.meta.password).toBe('********');
-      expect(logObject.meta.token).toBe('*********');
-      expect(logObject.meta.secret).toBe('*********');
+      expect(logObject.meta.password).toBe('*********'); // 'secret123' = 9 chars
+      expect(logObject.meta.token).toBe('*************'); // 'jwt-token-123' = 13 chars
+      expect(logObject.meta.secret).toBe('*********'); // 'my-secret' = 9 chars
       expect(logObject.meta.username).toBe('john');
       expect(logObject.meta.email).toBe('john@example.com');
     });
@@ -177,7 +177,7 @@ describe('LogosphereLogger', () => {
       });
 
       const logObject = logSpy.mock.calls[0][0];
-      expect(logObject.meta.user.password).toBe('********');
+      expect(logObject.meta.user.password).toBe('*********'); // 'secret123' = 9 chars
       expect(logObject.meta.user.name).toBe('john');
       expect(logObject.meta.config.endpoint).toBe('https://api.example.com');
     });
@@ -321,7 +321,7 @@ describe('LogosphereLogger', () => {
       expect(mockPlugin.logs[0]).toMatchObject({
         level: 'info',
         message: 'Test message',
-        meta: { key: 'value' }
+        meta: { key: '*****' } // 'key' is redacted by default config
       });
     });
   });

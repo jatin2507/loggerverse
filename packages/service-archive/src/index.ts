@@ -119,25 +119,29 @@ export class ArchiveServicePlugin implements LogospherePlugin {
     console.log('Starting archive process...');
 
     try {
-      // Find files to archive
-      const filesToArchive = this.findFilesToArchive();
-      
-      if (filesToArchive.length === 0) {
-        console.log('No files found for archiving');
-        return;
+      // Check if log directory is configured
+      const logDir = this.getLogDirectory();
+
+      if (logDir) {
+        // Find files to archive
+        const filesToArchive = this.findFilesToArchive();
+
+        if (filesToArchive.length === 0) {
+          console.log('No files found for archiving');
+        } else {
+          console.log(`Found ${filesToArchive.length} files to archive`);
+        }
+
+        // Archive files using the configured provider (always call when log dir exists)
+        const archivedFiles = await this.provider.archive(filesToArchive);
+
+        console.log(`Successfully archived ${archivedFiles?.length || 0} files`);
+
+        // Clean up local files after successful archiving
+        this.cleanupArchivedFiles(archivedFiles);
       }
 
-      console.log(`Found ${filesToArchive.length} files to archive`);
-
-      // Archive files using the configured provider
-      const archivedFiles = await this.provider.archive(filesToArchive);
-      
-      console.log(`Successfully archived ${archivedFiles.length} files`);
-
-      // Clean up local files after successful archiving
-      this.cleanupArchivedFiles(archivedFiles);
-
-      // Clean up old archives based on retention policy
+      // Clean up old archives based on retention policy (always run this)
       await this.cleanupOldArchives();
 
     } finally {
@@ -182,7 +186,11 @@ export class ArchiveServicePlugin implements LogospherePlugin {
    * Cleans up local files after successful archiving
    * @param archivedFiles - Array of successfully archived file paths
    */
-  private cleanupArchivedFiles(archivedFiles: string[]): void {
+  private cleanupArchivedFiles(archivedFiles: string[] | null | undefined): void {
+    if (!archivedFiles) {
+      return;
+    }
+
     for (const filePath of archivedFiles) {
       try {
         unlinkSync(filePath);

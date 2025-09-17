@@ -326,7 +326,7 @@ export class EmailTransportPlugin implements LogospherePlugin {
    * @returns Plain text
    */
   private stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 }
 

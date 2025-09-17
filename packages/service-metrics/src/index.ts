@@ -117,13 +117,23 @@ export class MetricsServicePlugin implements LogospherePlugin {
    * Starts the metrics collection process
    */
   private startMetricsCollection(): void {
-    // Initialize event loop monitoring
-    this.eventLoopMonitor = monitorEventLoopDelay({ resolution: 20 });
-    this.eventLoopMonitor.enable();
+    // Initialize event loop monitoring (optional, may not be available)
+    try {
+      this.eventLoopMonitor = monitorEventLoopDelay({ resolution: 20 });
+      this.eventLoopMonitor.enable();
+    } catch (error) {
+      console.warn('Event loop monitoring not available:', error);
+      this.eventLoopMonitor = null;
+    }
 
-    // Initialize CPU usage tracking
-    this.lastCpuUsage = process.cpuUsage();
-    this.lastCpuTime = performance.now();
+    // Initialize CPU usage tracking (optional, may not be available)
+    try {
+      this.lastCpuUsage = process.cpuUsage();
+      this.lastCpuTime = performance.now();
+    } catch (error) {
+      console.warn('CPU usage tracking not available:', error);
+      this.lastCpuUsage = null;
+    }
 
     // Start metrics collection interval
     this.metricsInterval = setInterval(() => {
@@ -203,8 +213,9 @@ export class MetricsServicePlugin implements LogospherePlugin {
    * @returns CPU usage metrics
    */
   private calculateCpuUsage(): MetricsObject['cpu'] {
-    const currentCpuUsage = process.cpuUsage();
-    const currentTime = performance.now();
+    try {
+      const currentCpuUsage = process.cpuUsage();
+      const currentTime = performance.now();
 
     if (!this.lastCpuUsage) {
       this.lastCpuUsage = currentCpuUsage;
@@ -216,6 +227,13 @@ export class MetricsServicePlugin implements LogospherePlugin {
     const timeDiff = (currentTime - this.lastCpuTime) * 1000; // Convert to microseconds
     const userDiff = currentCpuUsage.user - this.lastCpuUsage.user;
     const systemDiff = currentCpuUsage.system - this.lastCpuUsage.system;
+
+    // Handle zero or very small time differences to prevent division by zero
+    if (timeDiff <= 0) {
+      this.lastCpuUsage = currentCpuUsage;
+      this.lastCpuTime = currentTime;
+      return { user: 0, system: 0, total: 0 };
+    }
 
     // Calculate percentages
     const userPercent = (userDiff / timeDiff) * 100;
@@ -231,6 +249,10 @@ export class MetricsServicePlugin implements LogospherePlugin {
       system: Math.max(0, Math.min(100, systemPercent)),
       total: Math.max(0, Math.min(100, totalPercent)),
     };
+    } catch (error) {
+      // CPU usage tracking failed, return zero values
+      return { user: 0, system: 0, total: 0 };
+    }
   }
 
   /**

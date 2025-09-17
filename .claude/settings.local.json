@@ -6,7 +6,12 @@
       "Bash(npm install)",
       "Bash(npm run build:*)",
       "Bash(npm test)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm test:*)",
+      "Bash(npx turbo run test:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(node:*)",
+      "Bash(move:*)"
     ],
     "deny": [],
     "ask": []

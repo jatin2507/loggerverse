@@ -24,7 +24,7 @@ describe('Error Classes', () => {
 
       expect(error.message).toBe('Login failed');
       expect(error.code).toBe('LOGIN_ERROR');
-      expect(error.metadata).toEqual(metadata);
+      expect(error.context).toEqual(metadata);
     });
 
     it('should create error without metadata', () => {
@@ -32,7 +32,7 @@ describe('Error Classes', () => {
 
       expect(error.message).toBe('Simple error');
       expect(error.code).toBe('SIMPLE_CODE');
-      expect(error.metadata).toBeUndefined();
+      expect(error.context).toBeUndefined();
     });
 
     it('should have proper stack trace', () => {
@@ -44,8 +44,8 @@ describe('Error Classes', () => {
     });
 
     it('should be serializable to JSON', () => {
-      const metadata = { key: 'value', nested: { data: 123 } };
-      const error = new LogosphereError('JSON test', 'JSON_CODE', metadata);
+      const context = { key: 'value', nested: { data: 123 } };
+      const error = new LogosphereError('JSON test', 'JSON_CODE', context);
 
       const serialized = JSON.stringify(error);
       const parsed = JSON.parse(serialized);
@@ -53,20 +53,20 @@ describe('Error Classes', () => {
       expect(parsed.name).toBe('LogosphereError');
       expect(parsed.message).toBe('JSON test');
       expect(parsed.code).toBe('JSON_CODE');
-      expect(parsed.metadata).toEqual(metadata);
+      expect(parsed.context).toEqual(context);
     });
 
-    it('should handle circular references in metadata', () => {
-      const metadata: any = { name: 'test' };
-      metadata.self = metadata; // Create circular reference
+    it('should handle circular references in context', () => {
+      const context: any = { name: 'test' };
+      context.self = context; // Create circular reference
 
       expect(() => {
-        new LogosphereError('Circular test', 'CIRCULAR_CODE', metadata);
+        new LogosphereError('Circular test', 'CIRCULAR_CODE', context);
       }).not.toThrow();
     });
 
-    it('should handle complex metadata types', () => {
-      const metadata = {
+    it('should handle complex context types', () => {
+      const context = {
         string: 'text',
         number: 42,
         boolean: true,
@@ -78,13 +78,13 @@ describe('Error Classes', () => {
         function: () => 'test'
       };
 
-      const error = new LogosphereError('Complex metadata', 'COMPLEX_CODE', metadata);
+      const error = new LogosphereError('Complex context', 'COMPLEX_CODE', context);
 
-      expect(error.metadata).toBeDefined();
-      expect(error.metadata.string).toBe('text');
-      expect(error.metadata.number).toBe(42);
-      expect(error.metadata.boolean).toBe(true);
-      expect(error.metadata.array).toEqual([1, 2, 3]);
+      expect(error.context).toBeDefined();
+      expect(error.context.string).toBe('text');
+      expect(error.context.number).toBe(42);
+      expect(error.context.boolean).toBe(true);
+      expect(error.context.array).toEqual([1, 2, 3]);
     });
   });
 
@@ -112,7 +112,7 @@ describe('Error Classes', () => {
       );
 
       expect(error.message).toBe('Invalid log level');
-      expect(error.metadata).toEqual(validationDetails);
+      expect(error.context).toEqual(validationDetails);
     });
 
     it('should handle Zod validation errors', () => {
@@ -133,7 +133,7 @@ describe('Error Classes', () => {
       );
 
       expect(error.message).toBe('Configuration validation failed');
-      expect(error.metadata.zodError).toEqual(zodError);
+      expect(error.context.zodError).toEqual(zodError);
     });
 
     it('should provide helpful error messages', () => {
@@ -146,7 +146,7 @@ describe('Error Classes', () => {
 
   describe('FileWriteError', () => {
     it('should extend LogosphereError', () => {
-      const error = new FileWriteError('Write failed', './test.log');
+      const error = new FileWriteError('Write failed', { filePath: './test.log' });
 
       expect(error).toBeInstanceOf(Error);
       expect(error).toBeInstanceOf(LogosphereError);
@@ -155,17 +155,17 @@ describe('Error Classes', () => {
       expect(error.code).toBe('FILE_WRITE_ERROR');
     });
 
-    it('should include file path in metadata', () => {
+    it('should include file path in context', () => {
       const filePath = './logs/app.log';
-      const error = new FileWriteError('Permission denied', filePath);
+      const error = new FileWriteError('Permission denied', { filePath });
 
       expect(error.message).toBe('Permission denied');
-      expect(error.metadata).toEqual({ filePath });
+      expect(error.context).toEqual({ filePath });
     });
 
-    it('should include additional metadata', () => {
+    it('should include additional context', () => {
       const filePath = './logs/app.log';
-      const additionalMetadata = {
+      const additionalContext = {
         errno: -13,
         syscall: 'open',
         permissions: '644'
@@ -173,13 +173,15 @@ describe('Error Classes', () => {
 
       const error = new FileWriteError(
         'EACCES: permission denied',
-        filePath,
-        additionalMetadata
+        {
+          filePath,
+          ...additionalContext
+        }
       );
 
-      expect(error.metadata).toEqual({
+      expect(error.context).toEqual({
         filePath,
-        ...additionalMetadata
+        ...additionalContext
       });
     });
 
@@ -194,12 +196,14 @@ describe('Error Classes', () => {
 
       const error = new FileWriteError(
         'ENOENT: no such file or directory',
-        filePath,
-        { originalError: fsError }
+        {
+          filePath,
+          originalError: fsError
+        }
       );
 
-      expect(error.metadata.filePath).toBe(filePath);
-      expect(error.metadata.originalError).toEqual(fsError);
+      expect(error.context.filePath).toBe(filePath);
+      expect(error.context.originalError).toEqual(fsError);
     });
   });
 
@@ -207,7 +211,7 @@ describe('Error Classes', () => {
     it('should maintain instanceof relationships', () => {
       const baseError = new LogosphereError('Base', 'BASE');
       const configError = new ConfigValidationError('Config');
-      const fileError = new FileWriteError('File', './test.log');
+      const fileError = new FileWriteError('File', { filePath: './test.log' });
 
       // LogosphereError
       expect(baseError instanceof Error).toBe(true);
@@ -228,7 +232,7 @@ describe('Error Classes', () => {
       const errors = [
         new LogosphereError('Base', 'BASE'),
         new ConfigValidationError('Config'),
-        new FileWriteError('File', './test.log')
+        new FileWriteError('File', { filePath: './test.log' })
       ];
 
       errors.forEach(error => {
@@ -245,7 +249,7 @@ describe('Error Classes', () => {
     it('should be catchable as LogosphereError', () => {
       const errors = [
         new ConfigValidationError('Config'),
-        new FileWriteError('File', './test.log')
+        new FileWriteError('File', { filePath: './test.log' })
       ];
 
       errors.forEach(error => {
@@ -273,9 +277,9 @@ describe('Error Classes', () => {
       );
 
       expect(error.code).toBe('OPERATION_FAILED');
-      expect(error.metadata.operation).toBe('user-registration');
-      expect(error.metadata.userId).toBe('user-123');
-      expect(error.metadata.retryable).toBe(true);
+      expect(error.context.operation).toBe('user-registration');
+      expect(error.context.userId).toBe('user-123');
+      expect(error.context.retryable).toBe(true);
     });
 
     it('should preserve original error information', () => {
@@ -288,21 +292,21 @@ describe('Error Classes', () => {
         { originalError }
       );
 
-      expect(wrappedError.metadata.originalError).toBe(originalError);
-      expect(wrappedError.metadata.originalError.message).toBe('Database connection failed');
-      expect(wrappedError.metadata.originalError.stack).toBe('Original stack trace');
+      expect(wrappedError.context.originalError).toBe(originalError);
+      expect(wrappedError.context.originalError.message).toBe('Database connection failed');
+      expect(wrappedError.context.originalError.stack).toBe('Original stack trace');
     });
 
     it('should support error categorization', () => {
       const errors = [
         new LogosphereError('Network timeout', 'NETWORK_TIMEOUT', { category: 'network', retryable: true }),
         new ConfigValidationError('Invalid port', { category: 'configuration', retryable: false }),
-        new FileWriteError('Disk full', './log.txt', { category: 'filesystem', retryable: false })
+        new FileWriteError('Disk full', { filePath: './log.txt', category: 'filesystem', retryable: false })
       ];
 
       errors.forEach(error => {
-        expect(error.metadata?.category).toBeDefined();
-        expect(typeof error.metadata?.retryable).toBe('boolean');
+        expect(error.context?.category).toBeDefined();
+        expect(typeof error.context?.retryable).toBe('boolean');
       });
     });
   });

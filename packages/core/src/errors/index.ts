@@ -24,11 +24,25 @@ export class LogosphereError extends Error {
     this.name = 'LogosphereError';
     this.code = code;
     this.context = context;
-    
+
     // Maintains proper stack trace for where our error was thrown
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, LogosphereError);
     }
+  }
+
+  /**
+   * Custom JSON serialization
+   */
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      code: this.code,
+      metadata: this.context, // For backward compatibility in JSON
+      context: this.context,
+      stack: this.stack
+    };
   }
 }
 

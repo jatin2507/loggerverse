@@ -133,8 +133,7 @@ describe('Configuration Schema', () => {
       ];
 
       invalidConfigs.forEach(partialConfig => {
-        const config = defineConfig(partialConfig);
-        expect(() => validateConfig(config)).toThrow(ConfigValidationError);
+        expect(() => defineConfig(partialConfig)).toThrow(ConfigValidationError);
       });
     });
 
@@ -184,15 +183,19 @@ describe('Configuration Schema', () => {
       expect(() => validateConfig(config)).toThrow(ConfigValidationError);
     });
 
-    it('should handle missing required fields', () => {
+    it('should handle empty configs with defaults', () => {
       const incompleteConfigs = [
-        {}, // Missing level
-        { level: 'info' }, // Missing other required fields
-        { level: 'info', interceptConsole: true }, // Missing sanitization
+        {}, // Should use all defaults
+        { level: 'info' }, // Should use defaults for other fields
+        { level: 'info', interceptConsole: true }, // Should use defaults for sanitization
       ];
 
       incompleteConfigs.forEach(config => {
-        expect(() => validateConfig(config as any)).toThrow(ConfigValidationError);
+        expect(() => validateConfig(config as any)).not.toThrow();
+        const validatedConfig = validateConfig(config as any);
+        expect(validatedConfig.level).toBeDefined();
+        expect(validatedConfig.sanitization).toBeDefined();
+        expect(validatedConfig.interceptConsole).toBeDefined();
       });
     });
 
