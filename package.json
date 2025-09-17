@@ -2,6 +2,7 @@
   "name": "logverse",
   "version": "1.0.0",
   "description": "A self-contained, real-time observability platform for Node.js",
+  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*"

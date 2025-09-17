@@ -1,23 +1,14 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "lib": ["ES2022", "DOM"]
-  },
-  "include": ["src/**/*", "packages/*/src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "extends": "./tsconfig.base.json",
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/transport-console" },
+    { "path": "./packages/transport-file" },
+    { "path": "./packages/transport-email" },
+    { "path": "./packages/service-ai" },
+    { "path": "./packages/service-archive" },
+    { "path": "./packages/service-dashboard" },
+    { "path": "./packages/service-metrics" }
+  ],
+  "files": []
 }

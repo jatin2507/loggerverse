@@ -256,7 +256,7 @@ export class LogosphereLogger extends EventEmitter implements LogosphereCore {
    */
   private createLogObject(level: LogLevel, message: string, meta?: Record<string, unknown>): LogObject {
     const context = this.contextStorage.getStore();
-    const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) : undefined;
+    const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) as Record<string, unknown> : undefined;
 
     return {
       timestamp: Date.now(),
