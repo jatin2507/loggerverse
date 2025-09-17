@@ -1,0 +1,1 @@
+{"version":3,"file":"sanitization.d.ts","sourceRoot":"","sources":["sanitization.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,kBAAkB,EAAE,MAAM,UAAU,CAAC;AAE9C,qBAAa,aAAa;IACxB,OAAO,CAAC,UAAU,CAAc;IAChC,OAAO,CAAC,aAAa,CAAS;gBAElB,MAAM,GAAE,kBAAuB;IAK3C,QAAQ,CAAC,IAAI,EAAE,GAAG,GAAG,GAAG;IA8BxB,OAAO,CAAC,YAAY;IAOpB,OAAO,CAAC,SAAS;CASlB"}

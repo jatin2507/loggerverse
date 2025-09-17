@@ -1,262 +1,222 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { LoggerverseLogger, createLogger } from '../../../src/core/logger.js';
-import type { LoggerverseConfig } from '../../../src/types/index.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createLogger } from '../../../src/index.js';
+import { LogLevel } from '../../../src/types/index.js';
+import { ConsoleTransport } from '../../../src/transports/console.js';
 
 describe('LoggerverseLogger', () => {
-  let logger: LoggerverseLogger;
-  let mockConfig: LoggerverseConfig;
-
   beforeEach(() => {
-    mockConfig = {
-      level: 'info',
-      interceptConsole: false,
-      transports: [
-        {
-          type: 'console',
-          format: 'pretty',
-        },
-      ],
-    };
-  });
-
-  afterEach(async () => {
-    if (logger) {
-      await logger.close();
-    }
     vi.clearAllMocks();
   });
 
-  describe('initialization', () => {
-    it('should create logger with default config', () => {
-      logger = new LoggerverseLogger();
-      expect(logger).toBeInstanceOf(LoggerverseLogger);
+  describe('createLogger', () => {
+    it('should create a logger with default configuration', () => {
+      const logger = createLogger();
+      expect(logger).toBeDefined();
+      expect(typeof logger.info).toBe('function');
+      expect(typeof logger.warn).toBe('function');
+      expect(typeof logger.error).toBe('function');
+      expect(typeof logger.debug).toBe('function');
+      expect(typeof logger.fatal).toBe('function');
     });
 
-    it('should create logger with custom config', () => {
-      logger = new LoggerverseLogger(mockConfig);
-      expect(logger).toBeInstanceOf(LoggerverseLogger);
-    });
-
-    it('should initialize only once', async () => {
-      logger = new LoggerverseLogger(mockConfig);
-      await logger.initialize();
-      await logger.initialize(); // Should not throw or reinitialize
-      expect(logger).toBeInstanceOf(LoggerverseLogger);
-    });
-  });
-
-  describe('logging methods', () => {
-    beforeEach(() => {
-      logger = new LoggerverseLogger({
-        level: 'debug',
-        transports: [],
+    it('should create a logger with custom configuration', () => {
+      const logger = createLogger({
+        level: LogLevel.DEBUG,
+        context: { service: 'test' }
       });
-    });
-
-    it('should log debug messages', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.debug('test debug message', { userId: 'value' });
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'debug',
-        message: 'test debug message',
-        meta: { userId: 'value' },
-      }));
-    });
-
-    it('should log info messages', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.info('test info message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'info',
-        message: 'test info message',
-      }));
-    });
-
-    it('should log warning messages', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.warn('test warning message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'warn',
-        message: 'test warning message',
-      }));
-    });
-
-    it('should log error messages', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.error('test error message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'error',
-        message: 'test error message',
-      }));
-    });
-
-    it('should log fatal messages', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.fatal('test fatal message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'fatal',
-        message: 'test fatal message',
-      }));
-    });
-
-    it('should respect log level filtering', () => {
-      logger = new LoggerverseLogger({ level: 'warn', transports: [] });
-      const emitSpy = vi.spyOn(logger, 'emit');
-
-      logger.debug('should not log');
-      logger.info('should not log');
-      logger.warn('should log');
-
-      expect(emitSpy).toHaveBeenCalledTimes(1);
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'warn',
-        message: 'should log',
-      }));
-    });
-
-    it('should handle error objects in metadata', () => {
-      const error = new Error('test error');
-      const emitSpy = vi.spyOn(logger, 'emit');
-
-      logger.error('error occurred', { error });
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        error: {
-          name: 'Error',
-          message: 'test error',
-          stack: expect.any(String),
-        },
-      }));
-    });
-
-    it('should include system information in log objects', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      logger.info('test message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        timestamp: expect.any(Number),
-        hostname: expect.any(String),
-        pid: expect.any(Number),
-      }));
+      expect(logger).toBeDefined();
     });
   });
 
-  describe('context management', () => {
-    beforeEach(() => {
-      logger = new LoggerverseLogger({ transports: [] });
+  describe('Log Levels', () => {
+    it('should log info messages by default', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.info('Test message');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
     });
 
-    it('should run code in context', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
-      const context = { requestId: '123', userId: '456' };
+    it('should not log debug messages when level is INFO', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger({ level: LogLevel.INFO });
 
-      logger.runInContext(context, () => {
-        logger.info('message in context');
+      logger.debug('Debug message');
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should log error messages to console.error', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.error('Error message');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should log fatal messages to console.error', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.fatal('Fatal message');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should log warn messages to console.warn', () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.warn('Warning message');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Structured Logging', () => {
+    it('should log messages with metadata', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.info('User logged in', { userId: 123, email: 'test@example.com' });
+
+      expect(consoleSpy).toHaveBeenCalled();
+      const logOutput = consoleSpy.mock.calls[0]?.[0] as string;
+      expect(logOutput).toContain('User logged in');
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty metadata', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.info('Simple message', {});
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Context Support', () => {
+    it('should execute function in context', () => {
+      const logger = createLogger();
+      let result: string;
+
+      logger.runInContext({ requestId: '123' }, () => {
+        result = 'executed';
       });
 
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        context,
-      }));
-    });
-  });
-
-  describe('console interception', () => {
-    let originalConsole: any;
-
-    beforeEach(() => {
-      originalConsole = { ...console };
+      expect(result).toBe('executed');
     });
 
-    afterEach(() => {
-      Object.assign(console, originalConsole);
-    });
+    it('should return value from context function', () => {
+      const logger = createLogger();
 
-    it('should intercept console methods when enabled', async () => {
-      logger = new LoggerverseLogger({
-        interceptConsole: true,
-        transports: [],
+      const result = logger.runInContext({ requestId: '123' }, () => {
+        return 'test-result';
       });
 
-      await logger.initialize();
-
-      const emitSpy = vi.spyOn(logger, 'emit');
-      console.log('intercepted message');
-
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        level: 'info',
-        message: 'intercepted message',
-      }));
+      expect(result).toBe('test-result');
     });
 
-    it('should not intercept console methods when disabled', async () => {
-      logger = new LoggerverseLogger({
-        interceptConsole: false,
-        transports: [],
+    it('should log with context information', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger();
+
+      logger.runInContext({ requestId: '123' }, () => {
+        logger.info('Message with context');
       });
 
-      await logger.initialize();
-
-      const emitSpy = vi.spyOn(logger, 'emit');
-      console.log('not intercepted');
-
-      expect(emitSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('sanitization', () => {
-    beforeEach(() => {
-      logger = new LoggerverseLogger({
-        sanitization: {
-          redactKeys: ['password', 'secret'],
-          maskCharacter: '*',
-        },
-        transports: [],
-      });
+      expect(consoleSpy).toHaveBeenCalled();
+      const logOutput = consoleSpy.mock.calls[0]?.[0] as string;
+      expect(logOutput).toContain('Context:');
+      consoleSpy.mockRestore();
     });
 
-    it('should sanitize sensitive data', () => {
-      const emitSpy = vi.spyOn(logger, 'emit');
+    it('should handle nested contexts', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger();
 
-      logger.info('user login', {
-        username: 'john',
-        password: 'secret123',
-        secret: 'topsecret',
+      logger.runInContext({ level1: 'outer' }, () => {
+        logger.runInContext({ level2: 'inner' }, () => {
+          logger.info('Nested context message');
+        });
       });
 
-      expect(emitSpy).toHaveBeenCalledWith('log:ingest', expect.objectContaining({
-        meta: {
-          username: 'john',
-          password: '*********', // 9 characters for 'secret123'
-          secret: '*********', // 9 characters for 'topsecret'
-        },
-      }));
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
     });
   });
-});
 
-describe('createLogger', () => {
-  let logger: LoggerverseLogger;
+  describe('Custom Transports', () => {
+    it('should work with custom transport', () => {
+      const mockTransport = {
+        name: 'mock',
+        log: vi.fn()
+      };
 
-  afterEach(async () => {
-    if (logger) {
-      await logger.close();
-    }
+      const logger = createLogger({
+        transports: [mockTransport]
+      });
+
+      logger.info('Test message');
+
+      expect(mockTransport.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          level: LogLevel.INFO,
+          message: 'Test message',
+          timestamp: expect.any(String)
+        })
+      );
+    });
+
+    it('should handle transport errors gracefully', () => {
+      const errorTransport = {
+        name: 'error-transport',
+        log: vi.fn().mockImplementation(() => {
+          throw new Error('Transport error');
+        })
+      };
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const logger = createLogger({
+        transports: [errorTransport]
+      });
+
+      expect(() => {
+        logger.info('Test message');
+      }).not.toThrow();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Transport error-transport failed:',
+        expect.any(Error)
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
   });
 
-  it('should create a global logger instance', () => {
-    logger = createLogger();
-    expect(logger).toBeInstanceOf(LoggerverseLogger);
-  });
+  describe('Global Context', () => {
+    it('should include global context in logs', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const logger = createLogger({
+        context: { service: 'test-service', version: '1.0.0' }
+      });
 
-  it('should return the same instance on subsequent calls', () => {
-    const logger1 = createLogger();
-    const logger2 = createLogger();
-    expect(logger1).toBe(logger2);
-    logger = logger1;
+      logger.info('Test message');
+
+      expect(consoleSpy).toHaveBeenCalled();
+      const logOutput = consoleSpy.mock.calls[0]?.[0] as string;
+      expect(logOutput).toContain('Context:');
+      consoleSpy.mockRestore();
+    });
   });
 });

@@ -1,314 +1,129 @@
-import { EventEmitter } from 'eventemitter3';
-import { Worker } from 'worker_threads';
-import { AsyncLocalStorage } from 'async_hooks';
-import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import type {
-  LogLevel,
-  LogObject,
-  LoggerverseConfig,
-  LoggerverseCore,
-  Plugin,
-  Service
-} from '../types/index.js';
-import { NonBlockingQueue } from '../utils/queue.js';
-import { sanitizeObject } from '../utils/sanitization.js';
-import { shouldLog } from '../utils/levels.js';
-import { defaultConfig } from '../utils/config.js';
+import type { Logger, LoggerConfig, LogEntry, Transport, LogMethod, OverrideConfig } from '../types/index.js';
+import { LogLevel } from '../types/index.js';
+import { ConsoleTransport } from '../transports/console.js';
+import { DataSanitizer } from '../utils/sanitization.js';
+import { ConsoleOverride } from '../utils/console-override.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export class LoggerverseLogger implements Logger {
+  private level: LogLevel;
+  private transports: Transport[];
+  private sanitizer: DataSanitizer;
+  private globalContext: Record<string, any>;
+  private contextStack: Record<string, any>[] = [];
+  private consoleOverride: ConsoleOverride;
 
-export class LoggerverseLogger extends EventEmitter implements LoggerverseCore {
-  private config: LoggerverseConfig;
-  private queue: NonBlockingQueue;
-  private worker: Worker | null = null;
-  private services: Map<string, Service> = new Map();
-  private plugins: Map<string, Plugin> = new Map();
-  private contextStorage = new AsyncLocalStorage<Record<string, unknown>>();
-  private originalConsole: Record<string, Function> = {};
-  private isInitialized = false;
-  private isClosed = false;
+  constructor(config: LoggerConfig = {}) {
+    this.level = config.level || LogLevel.INFO;
+    this.transports = config.transports || [new ConsoleTransport()];
+    this.sanitizer = new DataSanitizer(config.sanitization);
+    this.globalContext = config.context || {};
 
-  constructor(config: LoggerverseConfig = {}) {
-    super();
-    this.config = { ...defaultConfig, ...config };
-    this.queue = new NonBlockingQueue();
+    // Initialize console override
+    const overrideConfig = this.parseOverrideConfig(config.overrideConsole);
+    this.consoleOverride = new ConsoleOverride(this, overrideConfig);
+
+    // Auto-override if configured
+    if (config.overrideConsole) {
+      this.overrideConsole();
+    }
   }
 
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+  debug: LogMethod = (message: string, meta?: Record<string, any>) => {
+    this.log(LogLevel.DEBUG, message, meta);
+  };
 
+  info: LogMethod = (message: string, meta?: Record<string, any>) => {
+    this.log(LogLevel.INFO, message, meta);
+  };
+
+  warn: LogMethod = (message: string, meta?: Record<string, any>) => {
+    this.log(LogLevel.WARN, message, meta);
+  };
+
+  error: LogMethod = (message: string, meta?: Record<string, any>) => {
+    this.log(LogLevel.ERROR, message, meta);
+  };
+
+  fatal: LogMethod = (message: string, meta?: Record<string, any>) => {
+    this.log(LogLevel.FATAL, message, meta);
+  };
+
+  runInContext<T>(context: Record<string, any>, fn: () => T): T {
+    this.contextStack.push(context);
     try {
-      // Initialize worker thread for transports (skip in unit test environment)
-      if (this.config.transports && this.config.transports.length > 0 &&
-          (process.env.NODE_ENV !== 'test' || process.env.LOGGERVERSE_INTEGRATION_TESTS === 'true')) {
-        await this.initializeWorker();
-      }
-
-      // Initialize services
-      if (this.config.services) {
-        await this.initializeServices();
-      }
-
-      // Intercept console methods if enabled
-      if (this.config.interceptConsole) {
-        this.interceptConsole();
-      }
-
-      this.isInitialized = true;
-      this.emit('initialized');
-    } catch (error) {
-      throw new Error(`Failed to initialize logger: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return fn();
+    } finally {
+      this.contextStack.pop();
     }
   }
 
-  private async initializeWorker(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const isBuilt = __dirname.includes('dist');
-      // For integration tests, always use the built worker
-      const shouldUseBuiltWorker = isBuilt || process.env.LOGGERVERSE_INTEGRATION_TESTS === 'true';
-      const workerPath = shouldUseBuiltWorker
-        ? path.join(__dirname, isBuilt ? '../workers/log-worker.js' : '../../dist/workers/log-worker.js')
-        : path.join(__dirname, '../workers/log-worker.ts');
-
-      this.worker = new Worker(workerPath, {
-        workerData: { transports: this.config.transports }
-      });
-
-      this.worker.on('message', (message) => {
-        if (message.type === 'ready') {
-          resolve();
-        } else if (message.type === 'error') {
-          reject(new Error(message.data));
-        }
-      });
-
-      this.worker.on('error', reject);
-      this.worker.on('exit', (code) => {
-        if (code !== 0 && !this.isClosed) {
-          console.error(`Worker stopped with exit code ${code}`);
-        }
-      });
-
-      // Send configuration to worker
-      this.worker.postMessage({
-        type: 'configure',
-        data: this.config.transports
-      });
-    });
+  overrideConsole(): void {
+    this.consoleOverride.override();
   }
 
-  private async initializeServices(): Promise<void> {
-    const { DashboardService } = await import('../services/dashboard.js');
-    const { MetricsService } = await import('../services/metrics.js');
-    const { AiService } = await import('../services/ai.js');
-    const { ArchiveService } = await import('../services/archive.js');
-
-    for (const serviceConfig of this.config.services!) {
-      let service: Service;
-
-      switch (serviceConfig.type) {
-        case 'dashboard':
-          service = new DashboardService(serviceConfig as any, this);
-          break;
-        case 'metrics':
-          service = new MetricsService(serviceConfig as any, this);
-          break;
-        case 'ai':
-          service = new AiService(serviceConfig as any, this);
-          break;
-        case 'archive':
-          service = new ArchiveService(serviceConfig as any, this);
-          break;
-        default:
-          continue;
-      }
-
-      this.services.set(serviceConfig.type, service);
-      await service.start();
-    }
+  restoreConsole(): void {
+    this.consoleOverride.restore();
   }
 
-  private interceptConsole(): void {
-    const consoleMethods = ['debug', 'info', 'warn', 'error', 'log'];
-
-    for (const method of consoleMethods) {
-      this.originalConsole[method] = console[method as keyof Console];
-
-      (console as any)[method] = (...args: unknown[]) => {
-        const level = method === 'log' ? 'info' : method as LogLevel;
-        const message = args.map(arg =>
-          typeof arg === 'string' ? arg : JSON.stringify(arg)
-        ).join(' ');
-
-        this.log(level, message);
-
-        // Call original console method to ensure output still appears
-        if (this.originalConsole[method]) {
-          this.originalConsole[method](...args);
-        }
-      };
-    }
-  }
-
-  private restoreConsole(): void {
-    for (const [method, originalFn] of Object.entries(this.originalConsole)) {
-      (console as any)[method] = originalFn;
-    }
-    this.originalConsole = {};
-  }
-
-  log(level: LogLevel, message: string, meta: Record<string, unknown> = {}): void {
-    if (this.isClosed) return;
-
-    if (!shouldLog(this.config.level || 'info', level)) {
+  private log(level: LogLevel, message: string, meta?: Record<string, any>): void {
+    if (!this.shouldLog(level)) {
       return;
     }
 
-    const context = this.contextStorage.getStore() || {};
-    const sanitizedMeta = this.config.sanitization?.redactKeys
-      ? sanitizeObject(meta, this.config.sanitization.redactKeys, this.config.sanitization.maskCharacter)
-      : meta;
+    const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) : undefined;
+    const currentContext = this.buildContext();
 
-    const logObject: LogObject = {
-      timestamp: Date.now(),
+    const entry: LogEntry = {
       level,
-      hostname: os.hostname(),
-      pid: process.pid,
       message,
       meta: sanitizedMeta,
-      context,
+      timestamp: new Date().toISOString(),
+      context: Object.keys(currentContext).length > 0 ? currentContext : undefined
     };
 
-    // Handle error objects
-    if (meta.error instanceof Error) {
-      logObject.error = {
-        name: meta.error.name,
-        message: meta.error.message,
-        stack: meta.error.stack || '',
-      };
-    }
-
-    // Add to queue for worker processing
-    if (!this.queue.push(logObject)) {
-      // Queue is full, emit warning but don't block
-      console.warn('Log queue is full, dropping log entry');
-      return;
-    }
-
-    // Send to worker if available (skip in unit test environment)
-    if (this.worker && (process.env.NODE_ENV !== 'test' || process.env.LOGGERVERSE_INTEGRATION_TESTS === 'true')) {
-      this.worker.postMessage({
-        type: 'log',
-        data: logObject
-      });
-    }
-
-    // Emit for real-time services
-    this.emit('log:ingest', logObject);
+    this.logToTransports(entry);
   }
 
-  debug(message: string, meta?: Record<string, unknown>): void {
-    this.log('debug', message, meta);
+  // Public method for console override to use - bypasses console methods
+  public logDirect(level: LogLevel, message: string, meta?: Record<string, any>): void {
+    this.log(level, message, meta);
   }
 
-  info(message: string, meta?: Record<string, unknown>): void {
-    this.log('info', message, meta);
-  }
-
-  warn(message: string, meta?: Record<string, unknown>): void {
-    this.log('warn', message, meta);
-  }
-
-  error(message: string, meta?: Record<string, unknown>): void {
-    this.log('error', message, meta);
-  }
-
-  fatal(message: string, meta?: Record<string, unknown>): void {
-    this.log('fatal', message, meta);
-  }
-
-  use(plugin: Plugin): void {
-    this.plugins.set(plugin.name, plugin);
-    plugin.init(this);
-  }
-
-  runInContext<T>(context: Record<string, unknown>, fn: () => T): T {
-    return this.contextStorage.run(context, fn);
-  }
-
-  async close(): Promise<void> {
-    if (this.isClosed) return;
-
-    this.isClosed = true;
-
-    // Restore console methods
-    if (this.config.interceptConsole) {
-      this.restoreConsole();
-    }
-
-    // Close services
-    const serviceClosePromises = Array.from(this.services.values()).map(async (service) => {
+  private logToTransports(entry: LogEntry): void {
+    this.transports.forEach(transport => {
       try {
-        if (service.stop) {
-          await service.stop();
-        }
+        transport.log(entry);
       } catch (error) {
-        console.error(`Error stopping service:`, error);
+        // Use original console.error to avoid infinite recursion
+        const originalError = this.consoleOverride?.isActive()
+          ? (console as any).__original_error || console.error
+          : console.error;
+        originalError(`Transport ${transport.name} failed:`, error);
       }
     });
+  }
 
-    await Promise.allSettled(serviceClosePromises);
+  private shouldLog(level: LogLevel): boolean {
+    const levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR, LogLevel.FATAL];
+    const currentLevelIndex = levels.indexOf(this.level);
+    const messageLevelIndex = levels.indexOf(level);
+    return messageLevelIndex >= currentLevelIndex;
+  }
 
-    // Close worker
-    if (this.worker) {
-      this.worker.postMessage({ type: 'close' });
-      await new Promise<void>((resolve) => {
-        const timeout = setTimeout(() => {
-          if (this.worker) {
-            this.worker.terminate();
-          }
-          resolve();
-        }, 5000);
+  private buildContext(): Record<string, any> {
+    const context = { ...this.globalContext };
 
-        this.worker!.on('exit', () => {
-          clearTimeout(timeout);
-          resolve();
-        });
-      });
+    this.contextStack.forEach(ctx => {
+      Object.assign(context, ctx);
+    });
+
+    return context;
+  }
+
+  private parseOverrideConfig(config: boolean | OverrideConfig | undefined): OverrideConfig {
+    if (typeof config === 'boolean') {
+      return config ? {} : { preserveOriginal: false, methods: [] };
     }
-
-    // Clear queue
-    this.queue.clear();
-
-    // Remove all listeners
-    this.removeAllListeners();
+    return config || {};
   }
-}
-
-let globalLogger: LoggerverseLogger | null = null;
-
-export function createLogger(config?: LoggerverseConfig): LoggerverseLogger {
-  if (globalLogger) {
-    return globalLogger;
-  }
-
-  globalLogger = new LoggerverseLogger(config);
-
-  // Initialize asynchronously
-  globalLogger.initialize().catch((error) => {
-    console.error('Failed to initialize logger:', error);
-  });
-
-  return globalLogger;
-}
-
-export function getLogger(): LoggerverseLogger | null {
-  return globalLogger;
-}
-
-export function resetGlobalLogger(): void {
-  globalLogger = null;
 }

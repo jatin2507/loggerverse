@@ -1,45 +1,58 @@
-export function sanitizeObject(
-  obj: Record<string, unknown>,
-  redactKeys: (string | RegExp)[] = [],
-  maskCharacter = '*'
-): Record<string, unknown> {
-  if (!obj || typeof obj !== 'object') {
-    return obj;
+import type { SanitizationConfig } from '../types/index.js';
+
+export class DataSanitizer {
+  private redactKeys: Set<string>;
+  private maskCharacter: string;
+
+  constructor(config: SanitizationConfig = {}) {
+    this.redactKeys = new Set(config.redactKeys || ['password', 'token', 'secret', 'key', 'apiKey']);
+    this.maskCharacter = config.maskCharacter || '*';
   }
 
-  const sanitized: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (shouldRedactKey(key, redactKeys)) {
-      sanitized[key] = maskValue(value, maskCharacter);
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-      sanitized[key] = sanitizeObject(value as Record<string, unknown>, redactKeys, maskCharacter);
-    } else if (Array.isArray(value)) {
-      sanitized[key] = value.map((item) =>
-        item && typeof item === 'object' && !Array.isArray(item)
-          ? sanitizeObject(item as Record<string, unknown>, redactKeys, maskCharacter)
-          : item
-      );
-    } else {
-      sanitized[key] = value;
+  sanitize(data: any): any {
+    if (data === null || data === undefined) {
+      return data;
     }
-  }
 
-  return sanitized;
-}
-
-function shouldRedactKey(key: string, redactKeys: (string | RegExp)[]): boolean {
-  return redactKeys.some((pattern) => {
-    if (typeof pattern === 'string') {
-      return key.toLowerCase().includes(pattern.toLowerCase());
+    if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
+      return data;
     }
-    return pattern.test(key);
-  });
-}
 
-function maskValue(value: unknown, maskCharacter: string): string {
-  if (typeof value === 'string') {
-    return value.length > 0 ? maskCharacter.repeat(value.length) : '';
+    if (Array.isArray(data)) {
+      return data.map(item => this.sanitize(item));
+    }
+
+    if (typeof data === 'object') {
+      const sanitized: Record<string, any> = {};
+
+      for (const [key, value] of Object.entries(data)) {
+        if (this.shouldRedact(key)) {
+          sanitized[key] = this.maskValue(value);
+        } else {
+          sanitized[key] = this.sanitize(value);
+        }
+      }
+
+      return sanitized;
+    }
+
+    return data;
   }
-  return maskCharacter.repeat(8);
+
+  private shouldRedact(key: string): boolean {
+    const lowerKey = key.toLowerCase();
+    return Array.from(this.redactKeys).some(redactKey =>
+      lowerKey.includes(redactKey.toLowerCase())
+    );
+  }
+
+  private maskValue(value: any): string {
+    if (typeof value === 'string') {
+      if (value.length <= 4) {
+        return this.maskCharacter.repeat(value.length);
+      }
+      return value.slice(0, 2) + this.maskCharacter.repeat(value.length - 4) + value.slice(-2);
+    }
+    return this.maskCharacter.repeat(8);
+  }
 }

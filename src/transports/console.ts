@@ -1,128 +1,104 @@
-import chalk from 'chalk';
-import type { LogObject, ConsoleTransportConfig, Transport } from '../types/index.js';
-import { shouldLog } from '../utils/levels.js';
+import type { Transport, LogEntry } from '../types/index.js';
+import { LogLevel } from '../types/index.js';
 
 export class ConsoleTransport implements Transport {
-  public readonly name = 'ConsoleTransport';
-  public readonly level: string;
+  public readonly name = 'console';
 
-  private config: ConsoleTransportConfig;
+  private readonly colors = {
+    [LogLevel.DEBUG]: '\x1b[95m',     // Bright magenta
+    [LogLevel.INFO]: '\x1b[92m',      // Bright green
+    [LogLevel.WARN]: '\x1b[93m',      // Bright yellow
+    [LogLevel.ERROR]: '\x1b[91m',     // Bright red
+    [LogLevel.FATAL]: '\x1b[41m\x1b[97m' // Red background, white text
+  };
 
-  constructor(config: ConsoleTransportConfig) {
-    this.config = {
-      format: 'pretty',
-      colors: true,
-      level: 'info',
-      ...config,
-    };
-    this.level = this.config.level || 'info';
-  }
+  private readonly levelSymbols = {
+    [LogLevel.DEBUG]: '🐛',
+    [LogLevel.INFO]: '🟢',
+    [LogLevel.WARN]: '🟡',
+    [LogLevel.ERROR]: '🔴',
+    [LogLevel.FATAL]: '💀'
+  };
 
-  async write(log: LogObject): Promise<void> {
-    if (!shouldLog(this.level as any, log.level)) {
-      return;
+  private readonly reset = '\x1b[0m';
+  private readonly dim = '\x1b[2m';
+  private readonly bold = '\x1b[1m';
+  private readonly cyan = '\x1b[96m';
+  private readonly yellow = '\x1b[93m';
+
+  log(entry: LogEntry): void {
+    const color = this.colors[entry.level];
+    const symbol = this.levelSymbols[entry.level];
+    const levelText = entry.level.toUpperCase();
+
+    // Format timestamp in NestJS style
+    const timestamp = new Date(entry.timestamp).toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(',', '');
+
+    // Extract context from entry.context or meta
+    let contextName = 'Application';
+    if (entry.context && entry.context.context) {
+      contextName = entry.context.context;
+    } else if (entry.meta && entry.meta.context) {
+      contextName = entry.meta.context;
     }
 
-    const formatted = this.config.format === 'json'
-      ? this.formatJson(log)
-      : this.formatPretty(log);
+    // Build the main log line in NestJS style
+    let output = `${this.dim}[Loggerverse] ${this.reset}`;
+    output += `${symbol} `;
+    output += `${this.dim}${timestamp}${this.reset} `;
+    output += `${color}${this.bold}[${levelText}]${this.reset} `;
+    output += `${this.yellow}[${contextName}]${this.reset} `;
+    output += `${entry.message}`;
 
-    // Use the appropriate console method
-    const consoleFn = this.getConsoleFunction(log.level);
-    consoleFn(formatted);
-  }
+    // Add meta information if present (excluding context)
+    if (entry.meta && Object.keys(entry.meta).length > 0) {
+      const metaCopy = { ...entry.meta };
+      delete metaCopy.context; // Don't show context twice
 
-  private formatJson(log: LogObject): string {
-    return JSON.stringify(log);
-  }
-
-  private formatPretty(log: LogObject): string {
-    const timestamp = new Date(log.timestamp).toISOString();
-    const level = log.level.toUpperCase().padEnd(5);
-    const pid = `[${log.pid}]`;
-
-    let formatted = `${timestamp} ${level} ${pid}: ${log.message}`;
-
-    if (this.config.colors) {
-      const coloredLevel = this.colorizeLevel(level, log.level);
-      const coloredTimestamp = chalk.gray(timestamp);
-      const coloredPid = chalk.cyan(pid);
-
-      formatted = `${coloredTimestamp} ${coloredLevel} ${coloredPid}: ${log.message}`;
-    }
-
-    // Add metadata if present
-    if (log.meta && Object.keys(log.meta).length > 0) {
-      const metaStr = this.config.colors
-        ? chalk.gray(JSON.stringify(log.meta, null, 2))
-        : JSON.stringify(log.meta, null, 2);
-      formatted += `\n${metaStr}`;
-    }
-
-    // Add error details if present
-    if (log.error) {
-      const errorStr = this.config.colors
-        ? chalk.red(`${log.error.name}: ${log.error.message}\n${log.error.stack}`)
-        : `${log.error.name}: ${log.error.message}\n${log.error.stack}`;
-      formatted += `\n${errorStr}`;
-    }
-
-    // Add context if present
-    if (log.context && Object.keys(log.context).length > 0) {
-      const contextStr = this.config.colors
-        ? chalk.magenta(`Context: ${JSON.stringify(log.context)}`)
-        : `Context: ${JSON.stringify(log.context)}`;
-      formatted += `\n${contextStr}`;
-    }
-
-    // Add AI analysis if present
-    if (log.aiAnalysis) {
-      const aiStr = this.config.colors
-        ? chalk.blue(`AI Analysis: ${log.aiAnalysis.summary} (Confidence: ${log.aiAnalysis.confidenceScore})`)
-        : `AI Analysis: ${log.aiAnalysis.summary} (Confidence: ${log.aiAnalysis.confidenceScore})`;
-      formatted += `\n${aiStr}`;
-
-      if (log.aiAnalysis.suggestedFix) {
-        const fixStr = this.config.colors
-          ? chalk.blue(`Suggested Fix: ${log.aiAnalysis.suggestedFix}`)
-          : `Suggested Fix: ${log.aiAnalysis.suggestedFix}`;
-        formatted += `\n${fixStr}`;
+      if (Object.keys(metaCopy).length > 0) {
+        output += `\n${this.cyan}${this.dim}${JSON.stringify(metaCopy, null, 2)}${this.reset}`;
       }
     }
 
-    return formatted;
-  }
+    // Add additional context info if it has more than just the context name
+    if (entry.context && Object.keys(entry.context).length > 0) {
+      const contextCopy = { ...entry.context };
+      delete contextCopy.context; // Don't show context name twice
 
-  private colorizeLevel(levelStr: string, level: string): string {
-    switch (level) {
-      case 'debug':
-        return chalk.blue(levelStr);
-      case 'info':
-        return chalk.green(levelStr);
-      case 'warn':
-        return chalk.yellow(levelStr);
-      case 'error':
-        return chalk.red(levelStr);
-      case 'fatal':
-        return chalk.red.bold(levelStr);
+      if (Object.keys(contextCopy).length > 0) {
+        output += `\n${this.cyan}${this.dim}Context: ${JSON.stringify(contextCopy, null, 2)}${this.reset}`;
+      }
+    }
+
+    // Use original console methods to avoid infinite recursion
+    const originalConsole = this.getOriginalConsoleMethods();
+
+    switch (entry.level) {
+      case LogLevel.ERROR:
+      case LogLevel.FATAL:
+        originalConsole.error(output);
+        break;
+      case LogLevel.WARN:
+        originalConsole.warn(output);
+        break;
       default:
-        return levelStr;
+        originalConsole.log(output);
     }
   }
 
-  private getConsoleFunction(level: string): (...args: unknown[]) => void {
-    switch (level) {
-      case 'debug':
-        return console.debug;
-      case 'info':
-        return console.info;
-      case 'warn':
-        return console.warn;
-      case 'error':
-      case 'fatal':
-        return console.error;
-      default:
-        return console.log;
-    }
+  private getOriginalConsoleMethods() {
+    return {
+      log: (console as any).__original_log || console.log,
+      warn: (console as any).__original_warn || console.warn,
+      error: (console as any).__original_error || console.error
+    };
   }
 }

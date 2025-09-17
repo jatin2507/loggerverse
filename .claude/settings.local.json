@@ -1,13 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install)",
-      "Bash(npm run build:*)",
+      "Bash(npm init:*)",
       "Bash(npm install:*)",
-      "Bash(npm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:run:*)",
       "Bash(node:*)",
-      "Bash(npm run lint)",
-      "Bash(npx eslint:*)"
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,46 +1,23 @@
-export { createLogger, getLogger, LoggerverseLogger } from './core/logger.js';
-export { defineConfig, validateConfig } from './utils/config.js';
+import { LoggerverseLogger } from './core/logger.js';
+import type { LoggerConfig, Logger } from './types/index.js';
 
-// Types
-export type {
-  LogLevel,
-  LogObject,
-  MetricsObject,
-  LoggerverseConfig,
-  TransportConfig,
-  ServiceConfig,
-  ConsoleTransportConfig,
-  FileTransportConfig,
-  EmailTransportConfig,
-  DashboardConfig,
-  AiConfig,
-  ArchiveConfig,
-  MetricsConfig,
-  Transport,
-  Service,
-  Plugin,
-  LoggerverseCore,
-  SmtpProvider,
-  SesProvider,
-  LocalArchiveProvider,
-  S3ArchiveProvider,
-} from './types/index.js';
+export function createLogger(config?: LoggerConfig): Logger {
+  return new LoggerverseLogger(config);
+}
 
-// Transports
-export { ConsoleTransport } from './transports/console.js';
-export { FileTransport } from './transports/file.js';
-export { EmailTransport } from './transports/email.js';
+// Convenience function to quickly setup console override
+export function setupConsoleLogger(config?: LoggerConfig): Logger {
+  const logger = createLogger({
+    ...config,
+    overrideConsole: true
+  });
+  return logger;
+}
 
-// Services
-export { DashboardService } from './services/dashboard.js';
-export { MetricsService } from './services/metrics.js';
-export { AiService } from './services/ai.js';
-export { ArchiveService } from './services/archive.js';
+export * from './types/index.js';
+export * from './core/logger.js';
+export * from './transports/console.js';
+export * from './utils/sanitization.js';
+export * from './utils/console-override.js';
 
-// Utilities
-export { sanitizeObject } from './utils/sanitization.js';
-export { shouldLog, parseLogLevel } from './utils/levels.js';
-export { NonBlockingQueue } from './utils/queue.js';
-
-// Error class
-export { LoggerverseError } from './types/index.js';
+export default createLogger;
