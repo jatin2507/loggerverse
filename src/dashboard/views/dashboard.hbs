@@ -1,0 +1,271 @@
+{{#> layout title="Dashboard"}}
+<div class="fade-in">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
+        <p class="mt-1 text-sm text-gray-500">Real-time monitoring and logging insights</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" x-data="dashboardStats()">
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-blue-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Total Logs Today</dt>
+                            <dd class="text-lg font-medium text-gray-900" x-text="stats.logsToday">-</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-red-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Errors Today</dt>
+                            <dd class="text-lg font-medium text-gray-900" x-text="stats.errorsToday">-</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-green-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">CPU Usage</dt>
+                            <dd class="text-lg font-medium text-gray-900" x-text="stats.cpuUsage + '%'">-</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-purple-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Memory Usage</dt>
+                            <dd class="text-lg font-medium text-gray-900" x-text="stats.memoryUsage + ' MB'">-</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Logs and Activity -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Logs -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Logs</h3>
+                <p class="mt-1 text-sm text-gray-500">Latest log entries from your application</p>
+            </div>
+            <div class="divide-y divide-gray-200" x-data="recentLogs()">
+                <template x-for="log in logs.slice(0, 5)" :key="log.timestamp">
+                    <div class="px-6 py-4 log-entry">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :class="getLevelColor(log.level)" x-text="log.level.toUpperCase()">
+                                </span>
+                                <span class="ml-3 text-sm text-gray-900" x-text="log.message"></span>
+                            </div>
+                            <span class="text-xs text-gray-500" x-text="formatTime(log.timestamp)"></span>
+                        </div>
+                        <template x-if="log.error">
+                            <div class="mt-2 text-xs text-red-600" x-text="log.error.message"></div>
+                        </template>
+                    </div>
+                </template>
+                <div class="px-6 py-4 bg-gray-50">
+                    <a href="{{path}}/logs" class="text-sm text-blue-600 hover:text-blue-500">
+                        View all logs →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">System Status</h3>
+                <p class="mt-1 text-sm text-gray-500">Real-time system metrics and health</p>
+            </div>
+            <div class="p-6" x-data="systemMetrics()">
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>CPU Usage</span>
+                            <span x-text="metrics.cpu?.total?.toFixed(1) + '%'">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                                 :style="`width: ${metrics.cpu?.total || 0}%`">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Memory Usage</span>
+                            <span x-text="formatBytes(metrics.memory?.heapUsed)">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full transition-all duration-500"
+                                 :style="`width: ${getMemoryPercent()}%`">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Event Loop Lag</span>
+                            <span x-text="metrics.eventLoop?.lag?.toFixed(2) + 'ms'">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-yellow-600 h-2 rounded-full transition-all duration-500"
+                                 :style="`width: ${Math.min((metrics.eventLoop?.lag || 0) / 10 * 100, 100)}%`">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <a href="{{path}}/metrics" class="text-sm text-blue-600 hover:text-blue-500">
+                        View detailed metrics →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function dashboardStats() {
+        return {
+            stats: {
+                logsToday: 0,
+                errorsToday: 0,
+                cpuUsage: 0,
+                memoryUsage: 0
+            },
+
+            init() {
+                if (window.socket) {
+                    socket.on('live_logs', (logs) => {
+                        this.updateStats(logs);
+                    });
+
+                    socket.on('metrics_update', (metrics) => {
+                        this.stats.cpuUsage = metrics.cpu?.total?.toFixed(1) || 0;
+                        this.stats.memoryUsage = Math.round((metrics.memory?.heapUsed || 0) / 1024 / 1024);
+                    });
+                }
+            },
+
+            updateStats(logs) {
+                const today = new Date().toDateString();
+                this.stats.logsToday += logs.length;
+
+                const todayErrors = logs.filter(log => {
+                    const logDate = new Date(log.timestamp).toDateString();
+                    return logDate === today && (log.level === 'error' || log.level === 'fatal');
+                });
+
+                this.stats.errorsToday += todayErrors.length;
+            }
+        }
+    }
+
+    function recentLogs() {
+        return {
+            logs: [],
+
+            init() {
+                if (window.socket) {
+                    socket.on('live_logs', (logs) => {
+                        this.logs = [...logs, ...this.logs].slice(0, 10);
+                    });
+                }
+            },
+
+            getLevelColor(level) {
+                const colors = {
+                    debug: 'bg-blue-100 text-blue-800',
+                    info: 'bg-green-100 text-green-800',
+                    warn: 'bg-yellow-100 text-yellow-800',
+                    error: 'bg-red-100 text-red-800',
+                    fatal: 'bg-red-200 text-red-900',
+                };
+                return colors[level] || 'bg-gray-100 text-gray-800';
+            },
+
+            formatTime(timestamp) {
+                return new Date(timestamp).toLocaleTimeString();
+            }
+        }
+    }
+
+    function systemMetrics() {
+        return {
+            metrics: {},
+
+            init() {
+                if (window.socket) {
+                    socket.on('metrics_update', (metrics) => {
+                        this.metrics = metrics;
+                    });
+                }
+            },
+
+            formatBytes(bytes) {
+                if (!bytes) return '-';
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+            },
+
+            getMemoryPercent() {
+                if (!this.metrics.memory) return 0;
+                return Math.round((this.metrics.memory.heapUsed / this.metrics.memory.heapTotal) * 100);
+            }
+        }
+    }
+</script>
+{{/layout}}

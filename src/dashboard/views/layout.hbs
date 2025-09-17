@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - Loggerverse Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="{{path}}/static/css/dashboard.css">
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .log-entry {
+            transition: all 0.2s ease;
+        }
+        .log-entry:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-lg border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="ml-2 text-xl font-bold text-gray-900">Loggerverse</span>
+                    </div>
+                    <div class="hidden md:ml-6 md:flex md:space-x-8">
+                        <a href="{{path}}/" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                        <a href="{{path}}/logs" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Logs</a>
+                        <a href="{{path}}/metrics" class="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">Metrics</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <div id="connection-status" class="flex items-center">
+                            <div class="h-2 w-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                            <span class="text-sm text-gray-600">Connected</span>
+                        </div>
+                    </div>
+                    {{#if user}}
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="flex items-center text-sm rounded-full bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white px-3 py-2">
+                            <span>{{user.username}}</span>
+                            <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div x-show="open" @click.away="open = false" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                            <div class="py-1">
+                                <span class="block px-4 py-2 text-sm text-gray-700">Role: {{user.role}}</span>
+                                <button onclick="logout()" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {{{body}}}
+    </main>
+
+    <script>
+        // Global socket connection
+        let socket;
+        let isConnected = false;
+
+        function initSocket() {
+            const token = localStorage.getItem('loggerverse_token');
+            socket = io('{{socketPath}}', {
+                auth: { token },
+                path: '{{path}}/socket.io/'
+            });
+
+            socket.on('connect', () => {
+                isConnected = true;
+                updateConnectionStatus(true);
+            });
+
+            socket.on('disconnect', () => {
+                isConnected = false;
+                updateConnectionStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+                updateConnectionStatus(false);
+            });
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connection-status');
+            if (connected) {
+                status.innerHTML = '<div class="h-2 w-2 bg-green-500 rounded-full mr-2 animate-pulse"></div><span class="text-sm text-gray-600">Connected</span>';
+            } else {
+                status.innerHTML = '<div class="h-2 w-2 bg-red-500 rounded-full mr-2"></div><span class="text-sm text-gray-600">Disconnected</span>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('loggerverse_token');
+            window.location.href = '{{path}}/login';
+        }
+
+        // Initialize socket on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('loggerverse_token');
+            if (token && window.location.pathname !== '{{path}}/login') {
+                initSocket();
+            }
+        });
+
+        // Auto-refresh token
+        setInterval(() => {
+            const token = localStorage.getItem('loggerverse_token');
+            if (token) {
+                // Could implement token refresh here
+            }
+        }, 60000); // Check every minute
+    </script>
+    <script src="{{path}}/static/js/dashboard.js"></script>
+</body>
+</html>

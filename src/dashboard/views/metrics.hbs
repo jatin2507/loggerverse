@@ -1,0 +1,353 @@
+{{#> layout title="Metrics"}}
+<div class="fade-in" x-data="metricsPage()">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">System Metrics</h1>
+        <p class="mt-1 text-sm text-gray-500">Real-time performance monitoring and analytics</p>
+    </div>
+
+    <!-- Current Status Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-blue-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">CPU Usage</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900" x-text="(currentMetrics.cpu?.total || 0).toFixed(1) + '%'"></div>
+                                <div class="ml-2 flex items-baseline text-sm font-semibold" :class="getCpuTrendColor()">
+                                    <svg class="self-center flex-shrink-0 h-4 w-4" :class="getCpuTrendIcon()" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-green-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Memory Usage</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900" x-text="formatBytes(currentMetrics.memory?.heapUsed || 0)"></div>
+                                <div class="ml-2 text-sm text-gray-600" x-text="'/ ' + formatBytes(currentMetrics.memory?.heapTotal || 0)"></div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-lg rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 text-yellow-600">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Event Loop Lag</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900" x-text="(currentMetrics.eventLoop?.lag || 0).toFixed(2) + 'ms'"></div>
+                                <div class="ml-2 flex items-baseline text-sm font-semibold" :class="getLagStatusColor()">
+                                    <span x-text="getLagStatus()"></span>
+                                </div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- CPU Chart -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">CPU Usage Over Time</h3>
+            </div>
+            <div class="p-6">
+                <div class="h-64" x-ref="cpuChart">
+                    <canvas x-ref="cpuCanvas" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Chart -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Memory Usage Over Time</h3>
+            </div>
+            <div class="p-6">
+                <div class="h-64" x-ref="memoryChart">
+                    <canvas x-ref="memoryCanvas" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Loop Lag Chart -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Event Loop Lag</h3>
+            </div>
+            <div class="p-6">
+                <div class="h-64" x-ref="lagChart">
+                    <canvas x-ref="lagCanvas" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">System Information</h3>
+            </div>
+            <div class="p-6">
+                <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Hostname</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="systemInfo.hostname">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Process ID</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="systemInfo.pid">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Node Version</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="systemInfo.nodeVersion">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Platform</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="systemInfo.platform">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Uptime</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="formatUptime(systemInfo.uptime)">-</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Load Average</dt>
+                        <dd class="mt-1 text-sm text-gray-900" x-text="systemInfo.loadAvg?.join(', ')">-</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function metricsPage() {
+        return {
+            currentMetrics: {},
+            metricsHistory: {
+                cpu: [],
+                memory: [],
+                eventLoop: []
+            },
+            systemInfo: {
+                hostname: location.hostname,
+                pid: '-',
+                nodeVersion: '-',
+                platform: '-',
+                uptime: 0,
+                loadAvg: []
+            },
+            charts: {
+                cpu: null,
+                memory: null,
+                lag: null
+            },
+
+            init() {
+                this.initializeCharts();
+
+                if (window.socket) {
+                    socket.on('metrics_update', (metrics) => {
+                        this.currentMetrics = metrics;
+                        this.updateMetricsHistory(metrics);
+                        this.updateCharts();
+                    });
+
+                    // Request system info
+                    socket.emit('get_system_info');
+                    socket.on('system_info', (info) => {
+                        this.systemInfo = { ...this.systemInfo, ...info };
+                    });
+                }
+
+                // Update system info periodically
+                setInterval(() => {
+                    this.systemInfo.uptime = process.uptime?.() || 0;
+                }, 1000);
+            },
+
+            initializeCharts() {
+                this.$nextTick(() => {
+                    this.charts.cpu = this.createChart(this.$refs.cpuCanvas, 'CPU Usage (%)', 'rgb(59, 130, 246)');
+                    this.charts.memory = this.createChart(this.$refs.memoryCanvas, 'Memory Usage (MB)', 'rgb(34, 197, 94)');
+                    this.charts.lag = this.createChart(this.$refs.lagCanvas, 'Event Loop Lag (ms)', 'rgb(251, 191, 36)');
+                });
+            },
+
+            createChart(canvas, label, color) {
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
+
+                return {
+                    ctx,
+                    width,
+                    height,
+                    data: [],
+                    maxPoints: 50,
+
+                    draw() {
+                        // Clear canvas
+                        this.ctx.clearRect(0, 0, this.width, this.height);
+
+                        if (this.data.length === 0) return;
+
+                        // Draw grid
+                        this.ctx.strokeStyle = '#e5e7eb';
+                        this.ctx.lineWidth = 1;
+
+                        for (let i = 0; i <= 10; i++) {
+                            const y = (this.height / 10) * i;
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(0, y);
+                            this.ctx.lineTo(this.width, y);
+                            this.ctx.stroke();
+                        }
+
+                        // Draw line
+                        if (this.data.length > 1) {
+                            this.ctx.strokeStyle = color;
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+
+                            const maxValue = Math.max(...this.data.map(d => d.value), 1);
+                            const stepX = this.width / (this.maxPoints - 1);
+
+                            this.data.forEach((point, index) => {
+                                const x = (index / (this.data.length - 1)) * this.width;
+                                const y = this.height - (point.value / maxValue) * this.height;
+
+                                if (index === 0) {
+                                    this.ctx.moveTo(x, y);
+                                } else {
+                                    this.ctx.lineTo(x, y);
+                                }
+                            });
+
+                            this.ctx.stroke();
+                        }
+                    },
+
+                    addPoint(value) {
+                        this.data.push({ timestamp: Date.now(), value });
+                        if (this.data.length > this.maxPoints) {
+                            this.data.shift();
+                        }
+                        this.draw();
+                    }
+                };
+            },
+
+            updateMetricsHistory(metrics) {
+                const timestamp = Date.now();
+
+                this.metricsHistory.cpu.push({ timestamp, value: metrics.cpu?.total || 0 });
+                this.metricsHistory.memory.push({ timestamp, value: (metrics.memory?.heapUsed || 0) / 1024 / 1024 });
+                this.metricsHistory.eventLoop.push({ timestamp, value: metrics.eventLoop?.lag || 0 });
+
+                // Keep only last 50 points
+                const maxPoints = 50;
+                Object.keys(this.metricsHistory).forEach(key => {
+                    if (this.metricsHistory[key].length > maxPoints) {
+                        this.metricsHistory[key] = this.metricsHistory[key].slice(-maxPoints);
+                    }
+                });
+            },
+
+            updateCharts() {
+                if (this.charts.cpu) {
+                    this.charts.cpu.addPoint(this.currentMetrics.cpu?.total || 0);
+                }
+                if (this.charts.memory) {
+                    this.charts.memory.addPoint((this.currentMetrics.memory?.heapUsed || 0) / 1024 / 1024);
+                }
+                if (this.charts.lag) {
+                    this.charts.lag.addPoint(this.currentMetrics.eventLoop?.lag || 0);
+                }
+            },
+
+            formatBytes(bytes) {
+                if (!bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+
+            formatUptime(seconds) {
+                const days = Math.floor(seconds / 86400);
+                const hours = Math.floor((seconds % 86400) / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+
+                if (days > 0) return `${days}d ${hours}h ${mins}m`;
+                if (hours > 0) return `${hours}h ${mins}m`;
+                return `${mins}m`;
+            },
+
+            getCpuTrendColor() {
+                const cpu = this.currentMetrics.cpu?.total || 0;
+                if (cpu > 80) return 'text-red-600';
+                if (cpu > 60) return 'text-yellow-600';
+                return 'text-green-600';
+            },
+
+            getCpuTrendIcon() {
+                // Simple trend indication - could be enhanced with historical data
+                return '';
+            },
+
+            getLagStatusColor() {
+                const lag = this.currentMetrics.eventLoop?.lag || 0;
+                if (lag > 100) return 'text-red-600';
+                if (lag > 50) return 'text-yellow-600';
+                return 'text-green-600';
+            },
+
+            getLagStatus() {
+                const lag = this.currentMetrics.eventLoop?.lag || 0;
+                if (lag > 100) return 'High';
+                if (lag > 50) return 'Medium';
+                return 'Low';
+            }
+        }
+    }
+</script>
+{{/layout}}
