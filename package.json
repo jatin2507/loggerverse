@@ -17,6 +17,8 @@
     "clean": "turbo run clean",
     "example": "cd examples/basic-usage && npm start",
     "publish:all": "node scripts/publish.js",
+    "publish:dry-run": "echo 'Running dry-run for all packages...' && npm run build && for dir in packages/*; do echo \"\\n📦 Dry-run for $dir\"; cd \"$dir\" && npm publish --dry-run && cd ../..; done",
+    "publish:auth-check": "npm whoami --registry=https://npm.pkg.github.com",
     "version:patch": "npm version patch --workspaces",
     "version:minor": "npm version minor --workspaces",
     "version:major": "npm version major --workspaces"

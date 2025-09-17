@@ -262,6 +262,46 @@ We welcome contributions! Please see our [Development Guide](./DEVELOPMENT.md) f
 - Testing requirements
 - Pull request process
 
+## 📦 Private Publishing
+
+Logverse packages are published privately to GitHub Package Registry for secure distribution.
+
+### Quick Setup for Publishers
+
+1. **Authenticate with GitHub Package Registry**:
+   ```bash
+   npm login --registry=https://npm.pkg.github.com
+   ```
+
+2. **Publish all packages**:
+   ```bash
+   npm run publish:all
+   ```
+
+### Quick Setup for Users
+
+1. **Configure npm for @logverse packages**:
+   ```bash
+   echo "@logverse:registry=https://npm.pkg.github.com" >> .npmrc
+   ```
+
+2. **Authenticate and install**:
+   ```bash
+   npm login --registry=https://npm.pkg.github.com
+   npm install @logverse/core
+   ```
+
+### Available Commands
+
+- `npm run publish:all` - Publish all packages privately
+- `npm run publish:dry-run` - Test publishing without actually publishing
+- `npm run publish:auth-check` - Verify GitHub Package Registry authentication
+- `npm run version:patch` - Bump patch version for all packages
+- `npm run version:minor` - Bump minor version for all packages
+- `npm run version:major` - Bump major version for all packages
+
+For detailed publishing instructions, see [PUBLISHING.md](./PUBLISHING.md).
+
 ## 📄 License
 
 MIT License. Copyright (c) 2024 Darkninjasolutions. All rights reserved.

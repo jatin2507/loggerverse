@@ -42,12 +42,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/logverse.git",
+    "url": "git+https://github.com/darkninjasolutions/logverse.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/yourusername/logverse#readme",
+  "homepage": "https://github.com/darkninjasolutions/logverse#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/logverse/issues"
+    "url": "https://github.com/darkninjasolutions/logverse/issues"
   },
   "files": [
     "dist",
@@ -55,6 +55,7 @@
     "package.json"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
   }
 }

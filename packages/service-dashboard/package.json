@@ -48,5 +48,14 @@
     "@logverse/core": "^1.0.0"
   },
   "author": "Darkninjasolutions",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
+  }
 }

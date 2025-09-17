@@ -11,7 +11,9 @@
       "Bash(npx turbo run test:*)",
       "Bash(npx vitest run:*)",
       "Bash(node:*)",
-      "Bash(move:*)"
+      "Bash(move:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm whoami:*)"
     ],
     "deny": [],
     "ask": []
