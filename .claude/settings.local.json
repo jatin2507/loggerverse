@@ -7,7 +7,9 @@
       "Bash(npm run build:*)",
       "Bash(npm run test:run:*)",
       "Bash(node:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(grep:*)",
+      "Bash(xargs rm:*)"
     ],
     "deny": [],
     "ask": []
