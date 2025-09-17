@@ -1,0 +1,99 @@
+<div class="logs-view">
+    <div class="logs-toolbar">
+        <div class="filter-controls">
+            <div class="filter-group">
+                <label for="search-input">
+                    <i class="fas fa-search"></i> Search
+                </label>
+                <input 
+                    type="text" 
+                    id="search-input"
+                    placeholder="Search logs..." 
+                    class="filter-input"
+                >
+            </div>
+            
+            <div class="filter-group">
+                <label for="level-filter">
+                    <i class="fas fa-filter"></i> Level
+                </label>
+                <select id="level-filter" class="filter-select">
+                    <option value="">All Levels</option>
+                    <option value="debug">Debug</option>
+                    <option value="info">Info</option>
+                    <option value="warn">Warn</option>
+                    <option value="error">Error</option>
+                    <option value="fatal">Fatal</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="start-date">
+                    <i class="fas fa-calendar"></i> From
+                </label>
+                <input 
+                    type="datetime-local" 
+                    id="start-date"
+                    class="filter-input"
+                >
+            </div>
+            
+            <div class="filter-group">
+                <label for="end-date">
+                    <i class="fas fa-calendar"></i> To
+                </label>
+                <input 
+                    type="datetime-local" 
+                    id="end-date"
+                    class="filter-input"
+                >
+            </div>
+        </div>
+        
+        <div class="toolbar-actions">
+            <label class="auto-scroll-toggle">
+                <input type="checkbox" id="auto-scroll" checked>
+                <i class="fas fa-arrow-down"></i> Auto-scroll
+            </label>
+            
+            <button id="clear-logs" class="action-button">
+                <i class="fas fa-trash"></i> Clear
+            </button>
+            
+            <button id="export-logs" class="action-button">
+                <i class="fas fa-download"></i> Export
+            </button>
+        </div>
+    </div>
+    
+    <div class="logs-status">
+        <span id="connection-status" class="status-indicator">
+            <i class="fas fa-circle"></i> Connecting...
+        </span>
+        
+        <span id="logs-count" class="logs-count">
+            0 logs
+        </span>
+        
+        <span id="error-status" class="status-error" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i> <span id="error-message"></span>
+        </span>
+    </div>
+    
+    <div class="logs-container">
+        <div id="logs-list" class="logs-list">
+            <div class="no-logs">
+                <i class="fas fa-inbox"></i>
+                <p>No logs received yet</p>
+                <small>Logs will appear here in real-time</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize logs view
+document.addEventListener('DOMContentLoaded', function() {
+    window.LogsView.init();
+});
+</script>

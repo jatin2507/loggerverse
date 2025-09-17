@@ -1,0 +1,60 @@
+{
+  "name": "@logverse/core",
+  "version": "1.0.0",
+  "description": "Core engine for Logosphere observability platform",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "eventemitter3": "^5.0.1",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^0.34.0"
+  },
+  "author": "Darkninjasolutions",
+  "license": "MIT",
+  "keywords": [
+    "logging",
+    "observability",
+    "monitoring",
+    "typescript",
+    "nodejs",
+    "logger",
+    "structured-logging",
+    "real-time",
+    "dashboard"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/logverse.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/yourusername/logverse#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/logverse/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

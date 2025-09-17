@@ -1,0 +1,32 @@
+{
+  "name": "@logverse/service-ai",
+  "version": "1.0.0",
+  "description": "AI-powered error analysis service for Logosphere",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^0.34.0"
+  },
+  "peerDependencies": {
+    "@logverse/core": "^1.0.0"
+  },
+  "author": "Darkninjasolutions",
+  "license": "MIT"
+}

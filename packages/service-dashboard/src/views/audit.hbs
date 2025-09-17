@@ -1,0 +1,86 @@
+<div class="audit-view">
+    <div class="audit-header">
+        <h2><i class="fas fa-shield-alt"></i> Audit Log</h2>
+        <div class="audit-actions">
+            <button id="refresh-audit" class="action-button">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <select id="audit-limit" class="filter-select">
+                <option value="50">Last 50 entries</option>
+                <option value="100" selected>Last 100 entries</option>
+                <option value="250">Last 250 entries</option>
+                <option value="500">Last 500 entries</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="audit-container">
+        {{#if auditLog}}
+        <div class="audit-table-container">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-clock"></i> Timestamp</th>
+                        <th><i class="fas fa-user"></i> User</th>
+                        <th><i class="fas fa-cog"></i> Action</th>
+                        <th><i class="fas fa-info-circle"></i> Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each auditLog}}
+                    <tr>
+                        <td class="audit-timestamp">{{formatDate timestamp}}</td>
+                        <td class="audit-user">
+                            <i class="fas fa-user"></i> User ID: {{userId}}
+                        </td>
+                        <td class="audit-action">
+                            <span class="action-badge {{getActionClass action}}">
+                                {{getActionIcon action}} {{action}}
+                            </span>
+                        </td>
+                        <td class="audit-details">
+                            {{#if details}}
+                                {{details}}
+                            {{else}}
+                                <em>No additional details</em>
+                            {{/if}}
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="no-audit">
+            <i class="fas fa-shield-alt"></i>
+            <h3>No audit entries found</h3>
+            <p>User actions will be logged here for security monitoring</p>
+        </div>
+        {{/if}}
+    </div>
+    
+    <div class="audit-info">
+        <div class="info-card">
+            <h3><i class="fas fa-info-circle"></i> Audit Information</h3>
+            <ul>
+                <li><strong>LOGIN</strong> - User authentication events</li>
+                <li><strong>DOWNLOAD_LOG_FILE</strong> - Log file download actions</li>
+                <li><strong>DELETE_LOG_FILE</strong> - Log file deletion actions</li>
+                <li><strong>VIEW_AUDIT</strong> - Audit log access events</li>
+                <li>All timestamps are in UTC</li>
+                <li>Audit entries are retained based on system configuration</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('refresh-audit').addEventListener('click', function() {
+    location.reload();
+});
+
+document.getElementById('audit-limit').addEventListener('change', function() {
+    const limit = this.value;
+    window.location.href = `/dashboard/audit?limit=${limit}`;
+});
+</script>

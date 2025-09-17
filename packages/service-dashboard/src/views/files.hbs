@@ -1,0 +1,105 @@
+<div class="files-view">
+    <div class="files-header">
+        <h2><i class="fas fa-folder"></i> Log Files Management</h2>
+        <div class="files-actions">
+            <button id="refresh-files" class="action-button">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="files-container">
+        {{#if files}}
+        <div class="files-table-container">
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-file"></i> File Name</th>
+                        <th><i class="fas fa-weight"></i> Size</th>
+                        <th><i class="fas fa-clock"></i> Modified</th>
+                        <th><i class="fas fa-compress"></i> Type</th>
+                        <th><i class="fas fa-cogs"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each files}}
+                    <tr>
+                        <td class="file-name">
+                            <i class="fas {{#if compressed}}fa-file-archive{{else}}fa-file-alt{{/if}}"></i>
+                            {{name}}
+                        </td>
+                        <td class="file-size">{{formatBytes size}}</td>
+                        <td class="file-modified">{{formatDate modified}}</td>
+                        <td class="file-type">
+                            {{#if compressed}}
+                                <span class="badge compressed">Compressed</span>
+                            {{else}}
+                                <span class="badge active">Active</span>
+                            {{/if}}
+                        </td>
+                        <td class="file-actions">
+                            <a href="/api/logs/download/{{name}}" class="action-btn download" title="Download">
+                                <i class="fas fa-download"></i>
+                            </a>
+                            {{#if compressed}}
+                            <button class="action-btn delete" onclick="deleteFile('{{name}}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {{/if}}
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="no-files">
+            <i class="fas fa-folder-open"></i>
+            <h3>No log files found</h3>
+            <p>Log files will appear here once your application starts logging</p>
+        </div>
+        {{/if}}
+    </div>
+    
+    <div class="files-info">
+        <div class="info-card">
+            <h3><i class="fas fa-info-circle"></i> File Information</h3>
+            <ul>
+                <li><strong>Active files</strong> are currently being written to</li>
+                <li><strong>Compressed files</strong> are rotated and compressed for storage</li>
+                <li>Files are automatically rotated based on size and time settings</li>
+                <li>Only compressed files can be deleted to prevent data loss</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteFile(filename) {
+    if (!confirm(`Are you sure you want to delete ${filename}? This action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/api/logs/${filename}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Failed to delete file: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        alert('Failed to delete file: ' + error.message);
+    });
+}
+
+document.getElementById('refresh-files').addEventListener('click', function() {
+    location.reload();
+});
+</script>
