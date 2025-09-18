@@ -34,13 +34,12 @@ describe('Console Override', () => {
 
   describe('Manual Override', () => {
     it('should override console methods manually', () => {
-      const logger = createLogger();
       const mockTransport = {
         name: 'mock',
         log: vi.fn()
       };
 
-      logger.constructor({ transports: [mockTransport] });
+      const logger = createLogger({ transports: [mockTransport] });
       logger.overrideConsole();
 
       console.log('Test message');
@@ -229,7 +228,7 @@ describe('Console Override', () => {
 
       setupConsoleLogger({ transports: [mockTransport] });
 
-      const testObj = { key: 'value' };
+      const testObj = { name: 'value' };
       console.log(testObj);
 
       expect(mockTransport.log).toHaveBeenCalledWith(
@@ -250,14 +249,14 @@ describe('Console Override', () => {
 
       setupConsoleLogger({ transports: [mockTransport] });
 
-      console.log('Message with params', 123, { key: 'value' }, [1, 2, 3]);
+      console.log('Message with params', 123, { name: 'value' }, [1, 2, 3]);
 
       expect(mockTransport.log).toHaveBeenCalledWith(
         expect.objectContaining({
           message: 'Message with params',
           meta: expect.objectContaining({
             param_0: 123,
-            key: 'value',
+            name: 'value',
             param_2_array: [1, 2, 3]
           })
         })
@@ -291,8 +290,6 @@ describe('Console Override', () => {
 
   describe('Error Handling', () => {
     it('should fallback to original console on logger errors', () => {
-      const originalLogSpy = vi.spyOn(originalConsole, 'log');
-
       const errorTransport = {
         name: 'error-transport',
         log: vi.fn().mockImplementation(() => {
@@ -300,7 +297,13 @@ describe('Console Override', () => {
         })
       };
 
-      setupConsoleLogger({ transports: [errorTransport] });
+      // Spy on console.log before setting up the logger
+      const originalLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      setupConsoleLogger({
+        transports: [errorTransport],
+        overrideConsole: { preserveOriginal: true }
+      });
 
       console.log('Test message');
 
@@ -318,6 +321,10 @@ describe('Console Override', () => {
         log: vi.fn()
       };
 
+      // These should still use original console methods
+      const infoSpy = vi.spyOn(console, 'info');
+      const warnSpy = vi.spyOn(console, 'warn');
+
       createLogger({
         overrideConsole: {
           preserveOriginal: true,
@@ -328,11 +335,6 @@ describe('Console Override', () => {
 
       console.log('Log message');
       console.error('Error message');
-
-      // These should still use original console methods
-      const infoSpy = vi.spyOn(originalConsole, 'info');
-      const warnSpy = vi.spyOn(originalConsole, 'warn');
-
       console.info('Info message');
       console.warn('Warn message');
 

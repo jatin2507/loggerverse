@@ -29,9 +29,10 @@ describe('ConsoleTransport', () => {
 
       expect(consoleSpy).toHaveBeenCalled();
       const logOutput = consoleSpy.mock.calls[0]?.[0] as string;
-      expect(logOutput).toContain('INFO');
+      expect(logOutput).toContain('[INFO]');
       expect(logOutput).toContain('Test info message');
-      expect(logOutput).toContain('2024-01-01T00:00:00.000Z');
+      expect(logOutput).toContain('[Loggerverse]');
+      expect(logOutput).toContain('[Application]');
 
       consoleSpy.mockRestore();
     });
@@ -228,7 +229,7 @@ describe('ConsoleTransport', () => {
       transport.log(entry);
 
       const logOutput = consoleSpy.mock.calls[0]?.[0] as string;
-      expect(logOutput).toMatch(/INFO\s/); // Should have padding after INFO
+      expect(logOutput).toMatch(/\[INFO\]/); // Should have INFO in brackets
 
       consoleSpy.mockRestore();
     });

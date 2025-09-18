@@ -64,7 +64,7 @@ export class ConsoleTransport implements Transport {
       delete metaCopy.context; // Don't show context twice
 
       if (Object.keys(metaCopy).length > 0) {
-        output += `\n${this.cyan}${this.dim}${JSON.stringify(metaCopy, null, 2)}${this.reset}`;
+        output += `\n${this.cyan}${this.dim}${this.safeStringify(metaCopy, 2)}${this.reset}`;
       }
     }
 
@@ -74,7 +74,7 @@ export class ConsoleTransport implements Transport {
       delete contextCopy.context; // Don't show context name twice
 
       if (Object.keys(contextCopy).length > 0) {
-        output += `\n${this.cyan}${this.dim}Context: ${JSON.stringify(contextCopy, null, 2)}${this.reset}`;
+        output += `\n${this.cyan}${this.dim}Context: ${this.safeStringify(contextCopy, 2)}${this.reset}`;
       }
     }
 
@@ -91,6 +91,23 @@ export class ConsoleTransport implements Transport {
         break;
       default:
         originalConsole.log(output);
+    }
+  }
+
+  private safeStringify(obj: any, indent?: number): string {
+    try {
+      const seen = new WeakSet();
+      return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) {
+            return '[Circular Reference]';
+          }
+          seen.add(value);
+        }
+        return value;
+      }, indent);
+    } catch (error) {
+      return '[Unable to stringify object]';
     }
   }
 

@@ -39,8 +39,12 @@ export class ConsoleOverride {
 
       switch (method) {
         case 'log':
+          console.log = (message?: any, ...optionalParams: any[]) => {
+            this.handleConsoleCall('log', message, optionalParams);
+          };
+          break;
         case 'info':
-          console[method] = (message?: any, ...optionalParams: any[]) => {
+          console.info = (message?: any, ...optionalParams: any[]) => {
             this.handleConsoleCall('info', message, optionalParams);
           };
           break;
@@ -83,7 +87,7 @@ export class ConsoleOverride {
   }
 
   private handleConsoleCall(
-    level: 'info' | 'warn' | 'error' | 'debug',
+    level: 'log' | 'info' | 'warn' | 'error' | 'debug',
     message: any,
     optionalParams: any[]
   ): void {
@@ -107,14 +111,19 @@ export class ConsoleOverride {
       }
 
       // Use logDirect to bypass any potential console recursion
-      const logLevel = level === 'info' ? LogLevel.INFO :
+      const logLevel = level === 'log' ? LogLevel.INFO :
+                      level === 'info' ? LogLevel.INFO :
                       level === 'warn' ? LogLevel.WARN :
                       level === 'error' ? LogLevel.ERROR :
-                      LogLevel.DEBUG;
+                      level === 'debug' ? LogLevel.DEBUG :
+                      LogLevel.INFO;
       (this.logger as any).logDirect(logLevel, logMessage, meta);
     } catch (error) {
       // Fallback to original console if available
-      const original = this.originalConsole[level === 'info' ? 'log' : level];
+      const originalMethod = level === 'log' ? 'log' :
+                            level === 'info' ? 'log' :
+                            level;
+      const original = this.originalConsole[originalMethod as keyof typeof this.originalConsole];
       if (original) {
         original(message, ...optionalParams);
       }

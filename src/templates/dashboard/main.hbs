@@ -1,0 +1,21 @@
+<div class="dashboard">
+    {{> header}}
+
+    {{#if showMetrics}}
+        {{> metrics}}
+    {{/if}}
+
+    <main>
+        <div id="logContainer" class="log-container">
+            <div class="loading">Loading logs...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+    window.DASHBOARD_CONFIG = {
+        apiPath: '{{apiPath}}',
+        realtime: {{realtime}},
+        showMetrics: {{showMetrics}}
+    };
+</script>

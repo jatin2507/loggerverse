@@ -11,28 +11,68 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
   },
   "keywords": [
     "logging",
     "logger",
     "typescript",
-    "nodejs"
+    "nodejs",
+    "log",
+    "console",
+    "file-rotation",
+    "email-alerts",
+    "dashboard",
+    "monitoring",
+    "express-middleware",
+    "sanitization",
+    "context-tracking",
+    "web-dashboard",
+    "metrics",
+    "system-monitoring",
+    "error-tracking"
   ],
-  "author": "",
+  "author": "Jatin <jatin@loggerverse.com>",
   "license": "MIT",
-  "description": "A powerful, flexible logging library for Node.js with TypeScript support",
+  "description": "Enterprise-grade logging library with beautiful console output, file rotation, email alerts, and secure web dashboard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jatin2507/loggerverse.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jatin2507/loggerverse/issues"
+  },
+  "homepage": "https://github.com/jatin2507/loggerverse#readme",
   "devDependencies": {
     "@types/node": "^22.18.5",
+    "@types/node-fetch": "^2.6.13",
+    "@types/nodemailer": "^7.0.1",
     "@vitest/ui": "^2.0.0",
+    "node-fetch": "^3.3.2",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.891.0",
+    "@types/handlebars": "^4.0.40",
+    "handlebars": "^4.7.8",
+    "nodemailer": "^7.0.6",
+    "systeminformation": "^5.27.10"
   }
 }

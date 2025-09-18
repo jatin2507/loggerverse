@@ -17,7 +17,10 @@ export function setupConsoleLogger(config?: LoggerConfig): Logger {
 export * from './types/index.js';
 export * from './core/logger.js';
 export * from './transports/console.js';
+export * from './transports/file.js';
+export * from './transports/email.js';
 export * from './utils/sanitization.js';
 export * from './utils/console-override.js';
+export * from './services/dashboard.js';
 
 export default createLogger;

@@ -3,6 +3,7 @@ import { LogLevel } from '../types/index.js';
 import { ConsoleTransport } from '../transports/console.js';
 import { DataSanitizer } from '../utils/sanitization.js';
 import { ConsoleOverride } from '../utils/console-override.js';
+import { LogDashboard, DashboardTransport } from '../services/dashboard.js';
 
 export class LoggerverseLogger implements Logger {
   private level: LogLevel;
@@ -11,12 +12,33 @@ export class LoggerverseLogger implements Logger {
   private globalContext: Record<string, any>;
   private contextStack: Record<string, any>[] = [];
   private consoleOverride: ConsoleOverride;
+  public dashboard: LogDashboard | undefined;
 
   constructor(config: LoggerConfig = {}) {
     this.level = config.level || LogLevel.INFO;
     this.transports = config.transports || [new ConsoleTransport()];
     this.sanitizer = new DataSanitizer(config.sanitization);
     this.globalContext = config.context || {};
+
+    // Initialize dashboard if configured
+    if (config.dashboard?.enabled) {
+      this.dashboard = new LogDashboard({
+        path: config.dashboard.path,
+        logFolder: config.dashboard.logFolder,
+        authenticate: config.dashboard.authenticate,
+        users: config.dashboard.users, // Pass users configuration
+        maxLogs: config.dashboard.maxLogs,
+        title: config.dashboard.title,
+        showMetrics: config.dashboard.showMetrics,
+        sessionTimeout: config.dashboard.sessionTimeout,
+        realtime: config.dashboard.realtime
+      });
+
+      // Add dashboard transport to capture logs
+      const dashboardTransport = new DashboardTransport(this.dashboard);
+      this.transports.push(dashboardTransport);
+      this.dashboard.attachLogger(this);
+    }
 
     // Initialize console override
     const overrideConfig = this.parseOverrideConfig(config.overrideConsole);
@@ -86,7 +108,25 @@ export class LoggerverseLogger implements Logger {
 
   // Public method for console override to use - bypasses console methods
   public logDirect(level: LogLevel, message: string, meta?: Record<string, any>): void {
-    this.log(level, message, meta);
+    if (!this.shouldLog(level)) {
+      return;
+    }
+
+    const currentContext = this.buildContext();
+    const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) : undefined;
+
+    const entry: LogEntry = {
+      level,
+      message,
+      meta: sanitizedMeta,
+      timestamp: new Date().toISOString(),
+      context: Object.keys(currentContext).length > 0 ? currentContext : undefined
+    };
+
+    // For console override, throw errors instead of catching them
+    this.transports.forEach(transport => {
+      transport.log(entry);
+    });
   }
 
   private logToTransports(entry: LogEntry): void {

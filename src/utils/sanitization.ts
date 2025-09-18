@@ -9,7 +9,7 @@ export class DataSanitizer {
     this.maskCharacter = config.maskCharacter || '*';
   }
 
-  sanitize(data: any): any {
+  sanitize(data: any, seen: WeakSet<object> = new WeakSet()): any {
     if (data === null || data === undefined) {
       return data;
     }
@@ -18,21 +18,31 @@ export class DataSanitizer {
       return data;
     }
 
-    if (Array.isArray(data)) {
-      return data.map(item => this.sanitize(item));
-    }
-
     if (typeof data === 'object') {
+      // Check for circular references
+      if (seen.has(data)) {
+        return '[Circular Reference]';
+      }
+
+      seen.add(data);
+
+      if (Array.isArray(data)) {
+        const result = data.map(item => this.sanitize(item, seen));
+        seen.delete(data);
+        return result;
+      }
+
       const sanitized: Record<string, any> = {};
 
       for (const [key, value] of Object.entries(data)) {
         if (this.shouldRedact(key)) {
           sanitized[key] = this.maskValue(value);
         } else {
-          sanitized[key] = this.sanitize(value);
+          sanitized[key] = this.sanitize(value, seen);
         }
       }
 
+      seen.delete(data);
       return sanitized;
     }
 
@@ -51,6 +61,7 @@ export class DataSanitizer {
       if (value.length <= 4) {
         return this.maskCharacter.repeat(value.length);
       }
+      // For strings longer than 4 chars, show first 2 + mask middle + last 2
       return value.slice(0, 2) + this.maskCharacter.repeat(value.length - 4) + value.slice(-2);
     }
     return this.maskCharacter.repeat(8);

@@ -1,0 +1,54 @@
+# Source files
+src/
+test/
+
+# Configuration files
+tsconfig.json
+vitest.config.ts
+.gitignore
+.editorconfig
+.prettierrc
+
+# Development files
+*.ts
+!*.d.ts
+examples/
+docs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.github/
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

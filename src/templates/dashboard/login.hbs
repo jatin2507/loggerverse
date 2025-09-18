@@ -1,0 +1,33 @@
+<div class="login-container">
+    <div class="logo">📊</div>
+    <div class="login-header">
+        <h1>Dashboard Login</h1>
+        <p>{{title}}</p>
+    </div>
+    <div id="error" class="error-message"></div>
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                required
+                autocomplete="username"
+                placeholder="Enter your username"
+            >
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                autocomplete="current-password"
+                placeholder="Enter your password"
+            >
+        </div>
+        <button type="submit" class="btn-login">Login</button>
+    </form>
+</div>

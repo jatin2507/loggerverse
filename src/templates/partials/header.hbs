@@ -1,0 +1,32 @@
+<header>
+    <div class="header-top">
+        <h1>📊 {{title}}</h1>
+        <div class="user-info">
+            <span style="margin-right: 1rem; color: var(--text-secondary);">
+                👤 {{username}}{{#if role}} ({{role}}){{/if}}
+            </span>
+            {{#if hasAuth}}
+            <a href="{{logoutPath}}" class="logout-btn">Logout</a>
+            {{/if}}
+        </div>
+    </div>
+    <div class="controls">
+        <select id="logLevel">
+            <option value="">All Levels</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warn">Warning</option>
+            <option value="error">Error</option>
+            <option value="fatal">Fatal</option>
+        </select>
+        <select id="logSource">
+            <option value="memory">Recent Logs</option>
+            <option value="file">File Logs</option>
+        </select>
+        <input type="text" id="searchBox" placeholder="Search logs...">
+        <button id="refreshBtn">🔄 Refresh</button>
+        {{#if realtime}}
+        <button id="streamBtn">📡 Live Stream</button>
+        {{/if}}
+    </div>
+</header>

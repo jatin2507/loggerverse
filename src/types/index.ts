@@ -30,6 +30,26 @@ export interface LoggerConfig {
   sanitization?: SanitizationConfig;
   context?: Record<string, any>;
   overrideConsole?: boolean | OverrideConfig;
+  dashboard?: DashboardOptions;
+}
+
+export interface DashboardOptions {
+  enabled?: boolean;
+  path?: string;
+  logFolder?: string;
+  authenticate?: (req: any) => Promise<boolean> | boolean;
+  users?: DashboardUser[]; // Multiple users with credentials
+  maxLogs?: number;
+  title?: string;
+  showMetrics?: boolean; // Show system metrics (CPU, RAM)
+  sessionTimeout?: number; // Session timeout in minutes
+  realtime?: boolean; // Enable real-time log streaming
+}
+
+export interface DashboardUser {
+  username: string;
+  password: string;
+  role?: 'admin' | 'viewer'; // Optional role-based access
 }
 
 export type LogMethod = (message: string, meta?: Record<string, any>) => void;
@@ -43,6 +63,10 @@ export interface Logger {
   runInContext<T>(context: Record<string, any>, fn: () => T): T;
   overrideConsole(): void;
   restoreConsole(): void;
+  dashboard?: {
+    middleware(): (req: any, res: any, next?: any) => void;
+    close(): void;
+  };
 }
 
 export interface OverrideConfig {

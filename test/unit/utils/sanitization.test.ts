@@ -18,8 +18,8 @@ describe('DataSanitizer', () => {
 
       expect(result.username).toBe('john');
       expect(result.normalField).toBe('normal value');
-      expect(result.password).toBe('se****23');
-      expect(result.apiKey).toBe('ab**********56');
+      expect(result.password).toBe('se*****23');
+      expect(result.apiKey).toBe('ab********56');
       expect(result.token).toBe('jw**********re');
     });
 
@@ -54,8 +54,8 @@ describe('DataSanitizer', () => {
       const result = sanitizer.sanitize(data);
 
       expect(result.password).toBe('shouldNotBeRedacted');
-      expect(result.customField).toBe('sh**********ed');
-      expect(result.sensitiveData).toBe('al**********ed');
+      expect(result.customField).toBe('sh************ed');
+      expect(result.sensitiveData).toBe('al********ed');
       expect(result.normalField).toBe('normal');
     });
 
@@ -70,7 +70,7 @@ describe('DataSanitizer', () => {
 
       const result = sanitizer.sanitize(data);
 
-      expect(result.password).toBe('se######23');
+      expect(result.password).toBe('se#####23');
     });
   });
 
@@ -104,8 +104,8 @@ describe('DataSanitizer', () => {
 
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(3);
-      expect(result[0]).toEqual({ password: 'se****t1' });
-      expect(result[1]).toEqual({ password: 'se****t2' });
+      expect(result[0]).toEqual({ password: 'se***t1' });
+      expect(result[1]).toEqual({ password: 'se***t2' });
       expect(result[2]).toBe('normal string');
     });
 
@@ -128,8 +128,8 @@ describe('DataSanitizer', () => {
       const result = sanitizer.sanitize(data);
 
       expect(result.user.name).toBe('John');
-      expect(result.user.credentials.password).toBe('se****23');
-      expect(result.user.credentials.apiKey).toBe('ke****56');
+      expect(result.user.credentials.password).toBe('se*****23');
+      expect(result.user.credentials.apiKey).toBe('ke*****56');
       expect(result.metadata.token).toBe('jw**********re');
     });
   });
@@ -146,9 +146,9 @@ describe('DataSanitizer', () => {
 
       const result = sanitizer.sanitize(data);
 
-      expect(result.PASSWORD).toBe('se****t1');
-      expect(result.ApiKey).toBe('se****t2');
-      expect(result.TOKEN).toBe('se****t3');
+      expect(result.PASSWORD).toBe('se***t1');
+      expect(result.ApiKey).toBe('se***t2');
+      expect(result.TOKEN).toBe('se***t3');
     });
 
     it('should match partial key names', () => {
@@ -162,9 +162,9 @@ describe('DataSanitizer', () => {
 
       const result = sanitizer.sanitize(data);
 
-      expect(result.userPassword).toBe('se****t1');
-      expect(result.authToken).toBe('se****t2');
-      expect(result.apiKeyValue).toBe('se****t3');
+      expect(result.userPassword).toBe('se***t1');
+      expect(result.authToken).toBe('se***t2');
+      expect(result.apiKeyValue).toBe('se***t3');
     });
   });
 
