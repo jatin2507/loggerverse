@@ -986,6 +986,8 @@ export class LogDashboard {
                 </select>
                 <input type="text" id="searchBox" placeholder="Search logs...">
                 <button id="refreshBtn">Refresh</button>
+                <button id="autoRefreshBtn" class="auto-refresh-btn active">⏸️ Pause Auto-Refresh</button>
+                <div id="refreshIndicator" class="refresh-indicator active">🟢 Live</div>
             </div>
         </header>
         ${data.showMetrics ? `
@@ -1211,6 +1213,48 @@ header {
     transform: translateY(0);
 }
 
+/* Auto-refresh controls */
+.auto-refresh-btn {
+    position: relative;
+}
+
+.auto-refresh-btn.active {
+    background: #22c55e !important;
+    border-color: #22c55e !important;
+}
+
+.auto-refresh-btn:not(.active) {
+    background: #6b7280 !important;
+    border-color: #6b7280 !important;
+}
+
+.refresh-indicator {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.refresh-indicator.active {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+.refresh-indicator.paused {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.refresh-indicator.error {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
 /* Metrics Section */
 .metrics-container {
     display: grid;
@@ -1390,10 +1434,82 @@ main {
     color: var(--text-primary);
 }
 
-.log-meta {
-    margin-top: 0.5rem;
+.log-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.log-message {
+    flex: 1;
+    min-width: 0;
+}
+
+.collapse-btn {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.collapse-btn:hover {
+    background: var(--border);
+    color: var(--text-primary);
+}
+
+.collapse-icon {
+    transition: transform 0.2s;
+}
+
+.collapse-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+.log-details {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-light);
+    animation: slideDown 0.2s ease;
+}
+
+.log-meta, .log-context {
+    margin-bottom: 0.5rem;
     color: var(--text-secondary);
     font-size: 0.85rem;
+}
+
+.log-meta pre, .log-context pre {
+    background: var(--bg-hover);
+    padding: 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+    }
+}
 }
 
 .loading {
@@ -1414,6 +1530,16 @@ main {
     .controls input {
         max-width: 100%;
     }
+
+    .auto-refresh-btn, .refresh-indicator {
+        flex-shrink: 0;
+        font-size: 0.75rem;
+    }
+
+    .refresh-indicator {
+        order: -1; /* Move indicator to top on mobile */
+        margin-bottom: 0.5rem;
+    }
 }
     `;
   }
@@ -1423,23 +1549,40 @@ main {
     return `
 const { apiPath, showMetrics } = window.DASHBOARD_CONFIG;
 let metricsInterval = null;
+let logsInterval = null;
+let isAutoRefreshEnabled = true;
 // Global set to track all seen log IDs and prevent duplicates
 const globalSeenLogIds = new Set();
+// Track if user manually interacted to avoid conflicts
+let userInteracting = false;
 
-async function loadLogs() {
+async function loadLogs(isAutoRefresh = false) {
     const level = document.getElementById('logLevel').value;
     const source = document.getElementById('logSource').value;
     const search = document.getElementById('searchBox').value;
     const date = document.getElementById('logDate').value;
 
-    const params = new URLSearchParams({ level, source, search, date }).toString();
-    const response = await fetch(\`\${apiPath}/logs?\${params}\`);
-    const logs = await response.json();
+    // Only auto-refresh for recent logs (memory source)
+    if (isAutoRefresh && source !== 'memory') {
+        return;
+    }
 
-    displayLogs(logs);
+    try {
+        const params = new URLSearchParams({ level, source, search, date }).toString();
+        const response = await fetch(apiPath + '/logs?' + params);
+        const logs = await response.json();
+
+        displayLogs(logs, isAutoRefresh);
+
+        // Update refresh indicator
+        updateRefreshIndicator();
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        updateRefreshIndicator('error');
+    }
 }
 
-function displayLogs(logs) {
+function displayLogs(logs, isAutoRefresh = false) {
     const container = document.getElementById('logContainer');
 
     if (logs.length === 0) {
@@ -1448,27 +1591,60 @@ function displayLogs(logs) {
         return;
     }
 
-    // Clear seen IDs when refreshing
-    globalSeenLogIds.clear();
+    // Handle deduplication differently for auto-refresh vs manual refresh
+    if (!isAutoRefresh) {
+        // Manual refresh: clear all seen IDs and display all logs
+        globalSeenLogIds.clear();
+    }
 
-    // Deduplicate logs and add to global set
+    // Sort logs by timestamp (newest first) and deduplicate
+    const sortedLogs = logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const uniqueLogs = [];
-    for (const log of logs) {
-        const id = log._id || \`\${log.timestamp}_\${log.level}_\${log.message}\`;
-        if (!globalSeenLogIds.has(id)) {
-            uniqueLogs.push(log);
-            globalSeenLogIds.add(id);
+    const currentLogIds = new Set();
+
+    for (const log of sortedLogs) {
+        const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
+
+        if (isAutoRefresh) {
+            // For auto-refresh: only add truly new logs (not seen before)
+            if (!globalSeenLogIds.has(id)) {
+                uniqueLogs.push(log);
+                globalSeenLogIds.add(id);
+                currentLogIds.add(id);
+            }
+        } else {
+            // For manual refresh: dedupe within current batch only
+            if (!currentLogIds.has(id)) {
+                uniqueLogs.push(log);
+                globalSeenLogIds.add(id);
+                currentLogIds.add(id);
+            }
         }
     }
 
-    container.innerHTML = uniqueLogs.map(log => \`
+    container.innerHTML = uniqueLogs.map((log, index) => {
+        const hasMetaOrContext = log.meta || log.context;
+        const metaContent = log.meta ? JSON.stringify(log.meta, null, 2) : '';
+        const contextContent = log.context ? JSON.stringify(log.context, null, 2) : '';
+
+        return \`
         <div class="log-entry \${log.level}" data-log-id="\${log._id || ''}">
-            <span class="log-timestamp">\${log.timestamp || 'N/A'}</span>
-            <span class="log-level \${log.level}">\${log.level}</span>
-            <span class="log-message">\${log.message}</span>
-            \${log.meta ? \`<div class="log-meta">\${JSON.stringify(log.meta, null, 2)}</div>\` : ''}
+            <div class="log-header">
+                <span class="log-timestamp">\${log.timestamp || 'N/A'}</span>
+                <span class="log-level \${log.level}">\${log.level}</span>
+                <span class="log-message">\${log.message}</span>
+                \${hasMetaOrContext ? \`<button class="collapse-btn" onclick="toggleLogDetails(\${index})" title="Toggle details">
+                    <span class="collapse-icon" id="icon-\${index}">▼</span>
+                </button>\` : ''}
+            </div>
+            \${hasMetaOrContext ? \`
+            <div class="log-details" id="details-\${index}" style="display: none;">
+                \${log.meta ? \`<div class="log-meta"><strong>Meta:</strong><pre>\${metaContent}</pre></div>\` : ''}
+                \${log.context ? \`<div class="log-context"><strong>Context:</strong><pre>\${contextContent}</pre></div>\` : ''}
+            </div>\` : ''}
         </div>
-    \`).join('');
+        \`;
+    }).join('');
 }
 
 async function loadMetrics() {
@@ -1526,6 +1702,20 @@ async function loadAvailableDates() {
     }
 }
 
+// Toggle log details (meta and context)
+function toggleLogDetails(index) {
+    const details = document.getElementById('details-' + index);
+    const icon = document.getElementById('icon-' + index);
+
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        icon.classList.add('collapsed');
+    } else {
+        details.style.display = 'none';
+        icon.classList.remove('collapsed');
+    }
+}
+
 // Show/hide date selector based on log source
 function handleSourceChange() {
     const source = document.getElementById('logSource').value;
@@ -1541,23 +1731,118 @@ function handleSourceChange() {
     loadLogs();
 }
 
+// Auto-refresh functionality for recent logs
+function startAutoRefresh() {
+    if (logsInterval) {
+        clearInterval(logsInterval);
+    }
+
+    logsInterval = setInterval(() => {
+        if (isAutoRefreshEnabled && !userInteracting) {
+            loadLogs(true); // Auto-refresh mode
+        }
+    }, 3000); // Refresh every 3 seconds
+}
+
+function stopAutoRefresh() {
+    if (logsInterval) {
+        clearInterval(logsInterval);
+        logsInterval = null;
+    }
+}
+
+function toggleAutoRefresh() {
+    isAutoRefreshEnabled = !isAutoRefreshEnabled;
+    const btn = document.getElementById('autoRefreshBtn');
+
+    if (isAutoRefreshEnabled) {
+        btn.textContent = '⏸️ Pause Auto-Refresh';
+        btn.classList.add('active');
+        startAutoRefresh();
+    } else {
+        btn.textContent = '▶️ Auto-Refresh';
+        btn.classList.remove('active');
+        stopAutoRefresh();
+    }
+
+    updateRefreshIndicator();
+}
+
+function updateRefreshIndicator(status = 'success') {
+    const indicator = document.getElementById('refreshIndicator');
+    if (!indicator) return;
+
+    const now = new Date().toLocaleTimeString();
+
+    if (status === 'error') {
+        indicator.innerHTML = '🔴 Error at ' + now;
+        indicator.className = 'refresh-indicator error';
+    } else if (isAutoRefreshEnabled) {
+        indicator.innerHTML = '🟢 Live at ' + now;
+        indicator.className = 'refresh-indicator active';
+    } else {
+        indicator.innerHTML = '⏸️ Paused at ' + now;
+        indicator.className = 'refresh-indicator paused';
+    }
+}
+
 // Event listeners
-document.getElementById('refreshBtn').addEventListener('click', loadLogs);
-document.getElementById('logLevel').addEventListener('change', loadLogs);
-document.getElementById('logSource').addEventListener('change', handleSourceChange);
-document.getElementById('logDate').addEventListener('change', loadLogs);
-document.getElementById('searchBox').addEventListener('input', loadLogs);
+document.getElementById('refreshBtn').addEventListener('click', () => {
+    userInteracting = true;
+    loadLogs();
+    setTimeout(() => userInteracting = false, 1000); // Reset after 1 second
+});
+
+document.getElementById('logLevel').addEventListener('change', () => {
+    userInteracting = true;
+    loadLogs();
+    setTimeout(() => userInteracting = false, 1000);
+});
+
+document.getElementById('logSource').addEventListener('change', () => {
+    userInteracting = true;
+    handleSourceChange();
+    setTimeout(() => userInteracting = false, 1000);
+});
+
+document.getElementById('logDate').addEventListener('change', () => {
+    userInteracting = true;
+    loadLogs();
+    setTimeout(() => userInteracting = false, 1000);
+});
+
+document.getElementById('searchBox').addEventListener('input', () => {
+    userInteracting = true;
+    loadLogs();
+    setTimeout(() => userInteracting = false, 2000); // Longer timeout for typing
+});
+
+// Auto-refresh button
+if (document.getElementById('autoRefreshBtn')) {
+    document.getElementById('autoRefreshBtn').addEventListener('click', toggleAutoRefresh);
+}
 
 // Streaming functionality removed for stability
 
 // Initial load
 loadLogs();
 
+// Start auto-refresh for recent logs
+startAutoRefresh();
+
 // Load metrics if enabled
 if (showMetrics) {
     loadMetrics();
     metricsInterval = setInterval(loadMetrics, 5000); // Update every 5 seconds
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    stopAutoRefresh();
+    if (metricsInterval) {
+        clearInterval(metricsInterval);
+    }
+});
     `;
   }
 

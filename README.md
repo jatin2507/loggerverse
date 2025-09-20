@@ -24,11 +24,6 @@
 - 🎯 **Console Override** - Replace native console methods seamlessly
 - 📊 **Multiple Transports** - Console, File, Email, Dashboard working together
 
-### New in Latest Version
-- 🌿 **Earth-Tone Design**: Beautiful sage green, cream, and warm earth color palette
-- 📂 **File Log Reading**: Dashboard automatically reads and displays historical logs
-- 📅 **Date Filtering**: Browse logs from different days with smart date detection
-- 🎨 **Minimal Interface**: Clean, modern design focused on readability and usability
 
 ## 🌟 Why Choose Loggerverse?
 
