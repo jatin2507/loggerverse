@@ -95,12 +95,12 @@ export class EmailTransport implements Transport {
       this.initializeSES();
     }
 
-    // Set default templates
+    // Set default templates with proper binding
     if (!this.config.templates) {
       this.config.templates = {
-        subject: this.defaultSubjectTemplate,
-        html: this.defaultHtmlTemplate,
-        text: this.defaultTextTemplate
+        subject: this.defaultSubjectTemplate.bind(this),
+        html: this.defaultHtmlTemplate.bind(this),
+        text: this.defaultTextTemplate.bind(this)
       };
     }
   }

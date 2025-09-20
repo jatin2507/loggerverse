@@ -1,6 +1,6 @@
 {
   "name": "loggerverse",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,6 +29,7 @@
     "postversion": "git push && git push --tags"
   },
   "keywords": [
+    "loggerverse",
     "logging",
     "logger",
     "typescript",
@@ -45,9 +46,11 @@
     "web-dashboard",
     "metrics",
     "system-monitoring",
-    "error-tracking"
+    "error-tracking",
+    "log-management",
+    "enterprise-logging"
   ],
-  "author": "Jatin <jatin@loggerverse.com>",
+  "author": "Jatin <jujatin@gmail.com>",
   "license": "MIT",
   "description": "Enterprise-grade logging library with beautiful console output, file rotation, email alerts, and secure web dashboard",
   "repository": {
