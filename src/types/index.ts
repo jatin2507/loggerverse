@@ -11,7 +11,7 @@ export interface LogEntry {
   message: string;
   meta?: Record<string, any>;
   timestamp: string;
-  context?: Record<string, any> | undefined;
+  context?: Record<string, any>;
 }
 
 export interface Transport {
@@ -33,11 +33,45 @@ export interface LoggerConfig {
   dashboard?: DashboardOptions;
 }
 
+// Express-like request interface for dashboard authentication
+export interface DashboardRequest {
+  method?: string;
+  path?: string;
+  url?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  body?: any;
+  query?: Record<string, any>;
+  ip?: string;
+  [key: string]: any;
+}
+
+// Express-like response interface for dashboard
+export interface DashboardResponse {
+  status(code: number): DashboardResponse;
+  json(obj: any): void;
+  send(data: any): void;
+  setHeader(name: string, value: string | string[]): void;
+  writeHead(statusCode: number, headers?: Record<string, string | string[]>): void;
+  write(chunk: any): boolean;
+  end(chunk?: any): void;
+  [key: string]: any;
+}
+
+// Express-like next function
+export type DashboardNext = (error?: any) => void;
+
+// Express-like middleware function
+export type DashboardMiddleware = (
+  req: DashboardRequest,
+  res: DashboardResponse,
+  next?: DashboardNext
+) => void;
+
 export interface DashboardOptions {
   enabled?: boolean;
   path?: string;
   logFolder?: string;
-  authenticate?: (req: any) => Promise<boolean> | boolean;
+  authenticate?: (req: DashboardRequest) => Promise<boolean> | boolean;
   users?: DashboardUser[]; // Multiple users with credentials
   maxLogs?: number;
   title?: string;
@@ -63,8 +97,9 @@ export interface Logger {
   runInContext<T>(context: Record<string, any>, fn: () => T): T;
   overrideConsole(): void;
   restoreConsole(): void;
+  isConsoleOverridden(): boolean;
   dashboard?: {
-    middleware(): (req: any, res: any, next?: any) => void;
+    middleware(): DashboardMiddleware;
     close(): void;
   };
 }

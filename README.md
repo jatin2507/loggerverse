@@ -4,22 +4,44 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/stars/jatin2507/loggerverse?style=social)](https://github.com/jatin2507/loggerverse)
 
-A powerful, enterprise-grade logging library for Node.js applications with beautiful console output, file rotation, email alerts, and a secure web dashboard.
+**loggerverse** - A powerful, enterprise-grade Node.js logging library with beautiful earth-tone dashboard, file log management, email alerts, and real-time monitoring. The complete logging solution for modern applications.
+
+**Keywords**: `loggerverse`, `nodejs logging`, `logging library`, `log dashboard`, `file logging`, `email alerts`, `log rotation`, `typescript logging`, `enterprise logging`, `log monitoring`
 
 📦 [NPM Package](https://www.npmjs.com/package/loggerverse) | 📚 [Documentation](https://github.com/jatin2507/loggerverse) | 🐛 [Report Issues](https://github.com/jatin2507/loggerverse/issues)
+
+## 🆕 What's New
+
+### Latest Version Highlights
+- 🌿 **Beautiful Earth-Tone Dashboard**: Complete redesign with sage green, cream, and warm earth colors
+- 📂 **Historical Log Reading**: Dashboard now automatically reads and displays file logs
+- 📅 **Smart Date Filtering**: Browse logs by date with intelligent file detection
+- 🎨 **Minimal Modern Design**: Clean, focused interface for better log analysis
+- 📱 **Enhanced Mobile Support**: Responsive design works perfectly on all devices
+- ⚡ **Performance Improvements**: Faster log loading and better memory management
+
+Try the new **loggerverse** dashboard today and experience the most beautiful logging interface for Node.js!
 
 ## ✨ Features
 
 ### Core Features
 - 🎨 **Beautiful Console Output** - NestJS-style colored and formatted logs
-- 📁 **File Rotation** - Automatic daily rotation with compression
+- 🌿 **Earth-Tone Dashboard** - Modern, minimal web interface with beautiful earth-tone color scheme
+- 📁 **Smart File Management** - Automatic rotation with compression and historical log access
+- 📅 **Date-Filtered Logs** - Browse logs by date with intelligent file detection
 - 📧 **Email Alerts** - SMTP and AWS SES support for critical errors
-- 🔐 **Secure Dashboard** - Web interface with authentication
-- 📈 **System Metrics** - Real-time CPU, memory, and disk monitoring
+- 🔐 **Secure Authentication** - Multi-user dashboard with role-based access
+- 📈 **Real-Time Metrics** - Live CPU, memory, and disk monitoring
 - 🔒 **Data Sanitization** - Automatic redaction of sensitive information
 - 🌍 **Context Tracking** - Request-scoped logging with correlation IDs
-- 🎯 **Console Override** - Replace native console methods
-- 📊 **Multiple Transports** - Console, File, Email, Dashboard simultaneously
+- 🎯 **Console Override** - Replace native console methods seamlessly
+- 📊 **Multiple Transports** - Console, File, Email, Dashboard working together
+
+### New in Latest Version
+- 🌿 **Earth-Tone Design**: Beautiful sage green, cream, and warm earth color palette
+- 📂 **File Log Reading**: Dashboard automatically reads and displays historical logs
+- 📅 **Date Filtering**: Browse logs from different days with smart date detection
+- 🎨 **Minimal Interface**: Clean, modern design focused on readability and usability
 
 ## 📦 Installation
 
@@ -35,8 +57,8 @@ pnpm add loggerverse
 
 ### Basic Usage
 
-```javascript
-const { createLogger, LogLevel } = require('loggerverse');
+```typescript
+import { createLogger, LogLevel } from 'loggerverse';
 
 // Create a simple logger
 const logger = createLogger({
@@ -60,9 +82,9 @@ logger.info('User logged in', {
 
 ### Complete Setup with All Features
 
-```javascript
-const { createLogger, FileTransport, EmailTransport, LogLevel } = require('loggerverse');
-const express = require('express');
+```typescript
+import { createLogger, FileTransport, EmailTransport, LogLevel } from 'loggerverse';
+import express from 'express';
 
 const app = express();
 
@@ -101,7 +123,7 @@ const logger = createLogger({
     // File transport with rotation
     new FileTransport({
       logFolder: './logs',
-      filename: 'app.log',
+      filename: 'app',
       datePattern: 'YYYY-MM-DD',
       maxFileSize: 10 * 1024 * 1024, // 10MB
       maxFiles: 30,
@@ -113,13 +135,13 @@ const logger = createLogger({
       provider: 'smtp',
       from: 'alerts@yourapp.com',
       to: ['admin@yourcompany.com'],
-      minLevel: LogLevel.ERROR,
+      levels: [LogLevel.ERROR, LogLevel.FATAL],
       smtp: {
         host: 'smtp.gmail.com',
         port: 587,
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
+          user: process.env.SMTP_USER!,
+          pass: process.env.SMTP_PASS!
         }
       }
     })
@@ -147,8 +169,8 @@ app.listen(3000, () => {
 
 Loggerverse supports five log levels, each with specific use cases:
 
-```javascript
-const { LogLevel } = require('loggerverse');
+```typescript
+import { LogLevel } from 'loggerverse';
 
 // Available levels (in order of severity)
 LogLevel.DEBUG  // Detailed debug information
@@ -160,7 +182,7 @@ LogLevel.FATAL  // Critical failures
 
 ### Configuration Options
 
-```javascript
+```typescript
 const logger = createLogger({
   // Minimum log level to output
   level: LogLevel.INFO,
@@ -203,7 +225,7 @@ const logger = createLogger({
 
 Automatically included, provides beautiful colored output:
 
-```javascript
+```typescript
 const logger = createLogger({
   level: LogLevel.DEBUG
 });
@@ -219,15 +241,15 @@ const logger = createLogger({
 
 Write logs to files with automatic rotation:
 
-```javascript
-const { FileTransport } = require('loggerverse');
+```typescript
+import { FileTransport } from 'loggerverse';
 
 new FileTransport({
   // Directory for log files
   logFolder: './logs',
 
   // Base filename
-  filename: 'app.log',
+  filename: 'app',
 
   // Date pattern for rotation (uses moment.js format)
   datePattern: 'YYYY-MM-DD',
@@ -248,7 +270,7 @@ new FileTransport({
   includeTimestamp: true,
 
   // Custom filename format function
-  getFilename: (date, level) => `app-${date}-${level}.log`
+  getFilename: (date: string, level?: string) => `app-${date}-${level}.log`
 });
 ```
 
@@ -256,20 +278,22 @@ new FileTransport({
 
 Send email alerts for critical errors:
 
-```javascript
-const { EmailTransport } = require('loggerverse');
+```typescript
+import { EmailTransport, LogLevel, LogEntry } from 'loggerverse';
 
 // SMTP Configuration
 new EmailTransport({
   provider: 'smtp',
   from: 'alerts@yourapp.com',
   to: ['admin@company.com', 'dev@company.com'],
-  subject: 'Application Error - {level}',
-  minLevel: LogLevel.ERROR,
+  levels: [LogLevel.ERROR, LogLevel.FATAL],
 
   // Batch settings
-  batchInterval: 5 * 60 * 1000, // 5 minutes
-  batchSize: 10,
+  batch: {
+    enabled: true,
+    maxBatchSize: 10,
+    flushInterval: 5 * 60 * 1000 // 5 minutes
+  },
 
   // SMTP settings
   smtp: {
@@ -277,19 +301,22 @@ new EmailTransport({
     port: 587,
     secure: false,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+      user: process.env.SMTP_USER!,
+      pass: process.env.SMTP_PASS!
     }
   },
 
   // Custom email template
-  template: (logs) => `
-    <h2>Error Report</h2>
-    <p>The following errors occurred:</p>
-    <ul>
-      ${logs.map(log => `<li>${log.timestamp} - ${log.message}</li>`).join('')}
-    </ul>
-  `
+  templates: {
+    subject: (entry: LogEntry) => `Application Error - ${entry.level}`,
+    html: (logs: LogEntry[]) => `
+      <h2>Error Report</h2>
+      <p>The following errors occurred:</p>
+      <ul>
+        ${logs.map(log => `<li>${log.timestamp} - ${log.message}</li>`).join('')}
+      </ul>
+    `
+  }
 });
 
 // AWS SES Configuration
@@ -297,7 +324,7 @@ new EmailTransport({
   provider: 'ses',
   from: 'alerts@yourapp.com',
   to: ['admin@company.com'],
-  minLevel: LogLevel.ERROR,
+  levels: [LogLevel.ERROR, LogLevel.FATAL],
 
   ses: {
     region: 'us-east-1',
@@ -307,28 +334,35 @@ new EmailTransport({
 });
 ```
 
-## 📊 Web Dashboard
+## 📊 Earth-Tone Web Dashboard
 
 ### Features
 
-The web dashboard provides:
-- Real-time log viewing
-- System metrics (CPU, Memory, Disk)
-- Log filtering and search
-- User authentication
-- Session management
-- Dark theme interface
-- Export capabilities
+The **loggerverse** dashboard provides a beautiful, modern interface with:
+- 🌿 **Earth-Tone Design** - Sage green, cream, and warm color palette
+- 📊 **Real-Time Log Viewing** - Live updates with smooth animations
+- 📂 **Historical Log Access** - Browse logs from previous days
+- 📅 **Smart Date Filtering** - Automatic detection of available log dates
+- 📈 **System Metrics** - Real-time CPU, memory, and disk monitoring
+- 🔍 **Advanced Filtering** - Search by level, source, and content
+- 🔐 **Secure Authentication** - Multi-user support with role-based access
+- ⚙️ **Session Management** - Automatic timeout and security features
+- 📱 **Responsive Design** - Works perfectly on desktop and mobile
+- 🎨 **Minimal Interface** - Clean, distraction-free logging experience
 
-### Configuration
+### Dashboard Configuration
 
 ```javascript
+// Enhanced loggerverse dashboard configuration
 dashboard: {
   // Enable/disable dashboard
   enabled: true,
 
   // URL path for dashboard
   path: '/logs',
+
+  // Log folder for historical file logs (NEW!)
+  logFolder: './logs',
 
   // Authentication (empty array = no auth)
   users: [
@@ -342,24 +376,60 @@ dashboard: {
   // Session timeout in minutes
   sessionTimeout: 30,
 
-  // Maximum logs to keep in memory
+  // Maximum logs to keep in memory for real-time viewing
   maxLogs: 1000,
 
-  // Dashboard title
-  title: 'Application Logs',
+  // Dashboard title (appears in header)
+  title: 'Loggerverse Dashboard',
 
-  // Show system metrics
+  // Show system metrics (CPU, Memory, Disk)
   showMetrics: true,
 
-  // Log folder for file-based logs
-  logFolder: './logs'
+  // Enable real-time log streaming
+  realtime: true
 }
 ```
 
-### Integration with Express
+### New Dashboard Features
+
+#### 📂 Historical Log Access
+The dashboard now automatically reads log files from your configured `logFolder`:
 
 ```javascript
-const express = require('express');
+const logger = createLogger({
+  // File transport saves logs
+  transports: [
+    new FileTransport({
+      logFolder: './logs',
+      filename: 'app',
+      format: 'json'  // Recommended for dashboard reading
+    })
+  ],
+
+  // Dashboard reads from the same folder
+  dashboard: {
+    enabled: true,
+    logFolder: './logs'  // Same folder as file transport
+  }
+});
+```
+
+#### 📅 Date Filtering Interface
+- **Smart Date Detection**: Automatically finds available log dates
+- **Dynamic Selector**: Date dropdown appears when viewing file logs
+- **Multiple Formats**: Supports both JSON and text log formats
+- **Intelligent Parsing**: Handles various timestamp formats
+
+#### 🌿 Earth-Tone Color Scheme
+- **Sage Green** (`#ccd5ae`) - Primary accent and buttons
+- **Light Sage** (`#e9edc9`) - Hover states and borders
+- **Cream** (`#fefae0`) - Main background
+- **Warm Cream** (`#faedcd`) - Cards and form backgrounds
+
+### Integration with Express
+
+```typescript
+import express from 'express';
 const app = express();
 
 const logger = createLogger({
@@ -367,24 +437,89 @@ const logger = createLogger({
 });
 
 // IMPORTANT: Add this middleware
-app.use(logger.dashboard.middleware());
+app.use(logger.dashboard!.middleware());
 
 app.listen(3000);
 // Dashboard available at http://localhost:3000/logs
 ```
 
-### Authentication Flow
+### Dashboard Usage Guide
 
-1. **No Users Configured**: Open access
-2. **Users Configured**: Login required
-3. **Session Management**: Automatic timeout
+#### 📊 Viewing Logs
+1. **Recent Logs**: Default view shows live logs from memory
+2. **File Logs**: Switch to "File Logs" to browse historical data
+3. **Date Selection**: Choose specific dates when available
+4. **Filtering**: Use level, search, and source filters
+5. **Real-time**: Live updates when viewing recent logs
+
+#### 🔐 Authentication Flow
+1. **No Users Configured**: Open access to dashboard
+2. **Users Configured**: Login required with username/password
+3. **Session Management**: Automatic timeout after inactivity
 4. **Rate Limiting**: 5 failed attempts = 15-minute lockout
+
+## 📂 File Log Management
+
+### Automatic File Reading
+
+**loggerverse** now automatically reads and displays logs from your file transport:
+
+```typescript
+import { createLogger, FileTransport } from 'loggerverse';
+
+const logger = createLogger({
+  transports: [
+    // Save logs to files
+    new FileTransport({
+      logFolder: './logs',
+      filename: 'app',
+      format: 'json',  // JSON format is optimal for dashboard
+      datePattern: 'YYYY-MM-DD'
+    })
+  ],
+
+  dashboard: {
+    enabled: true,
+    logFolder: './logs',  // Dashboard reads from same folder
+    path: '/dashboard'
+  }
+});
+```
+
+### Supported Log Formats
+
+#### JSON Format (Recommended)
+```json
+{"level":"info","message":"User login","meta":{"userId":123},"timestamp":"2024-01-01T10:00:00.000Z"}
+{"level":"error","message":"Database error","meta":{"error":"Connection failed"},"timestamp":"2024-01-01T10:01:00.000Z"}
+```
+
+#### Text Format (Also Supported)
+```
+[Loggerverse] 🟢 01/01/2024 10:00:00 [INFO] [Application] User login
+[Loggerverse] 🔴 01/01/2024 10:01:00 [ERROR] [Application] Database error
+```
+
+### Date-Based File Organization
+
+**loggerverse** automatically detects log files with date patterns:
+- `app-2024-01-01.json` - Date in filename
+- `app-2024-01-01.log` - Text format with date
+- `application.log` - Uses file modification time
+
+### Dashboard File Features
+
+- **📅 Smart Date Detection**: Automatically finds available dates
+- **🔄 Dynamic Loading**: Loads logs on-demand when dates are selected
+- **📊 Performance Optimized**: Limits results for fast loading
+- **🔍 Enhanced Parsing**: Handles multiple log formats gracefully
+- **📱 Mobile Friendly**: Responsive date selection interface
 
 ## 🔒 Data Sanitization
 
 Automatically redact sensitive information:
 
-```javascript
+```typescript
 const logger = createLogger({
   sanitization: {
     redactKeys: [
@@ -413,7 +548,9 @@ logger.info('User login', {
 
 Track request context across your application:
 
-```javascript
+```typescript
+import crypto from 'crypto';
+
 // Middleware for request tracking
 app.use((req, res, next) => {
   const requestId = crypto.randomBytes(16).toString('hex');
@@ -437,7 +574,7 @@ app.use((req, res, next) => {
 
 Replace native console methods:
 
-```javascript
+```typescript
 const logger = createLogger({
   overrideConsole: {
     preserveOriginal: false,
@@ -492,6 +629,19 @@ Override native console methods
 
 #### logger.restoreConsole()
 Restore original console methods
+
+#### logger.isConsoleOverridden()
+Check if console methods are currently overridden
+
+### Dashboard API Methods
+
+When dashboard is enabled, additional methods are available:
+
+#### logger.dashboard.middleware()
+Returns Express middleware for serving the dashboard
+
+#### logger.dashboard.close()
+Cleanup dashboard resources and close connections
 
 ## 🧪 Testing
 
@@ -562,21 +712,38 @@ LOG_LEVEL=info
 
 2. **Secure Your Dashboard**
    - Always use authentication in production
-   - Use strong passwords
-   - Enable HTTPS
+   - Use strong passwords for **loggerverse** dashboard
+   - Enable HTTPS for dashboard access
    - Set appropriate session timeouts
+   - Regularly audit dashboard access logs
 
-3. **Manage Log Files**
-   - Set rotation policies
-   - Enable compression for old logs
-   - Monitor disk usage
-   - Regular backups
+3. **Optimize File Log Management**
+   - Use JSON format for best dashboard compatibility
+   - Set up proper rotation policies with FileTransport
+   - Enable compression for old logs to save disk space
+   - Monitor disk usage and clean up old files
+   - Use consistent filename patterns for date detection
+   - Consider separate log folders for different services
 
-4. **Email Alerts**
-   - Only for ERROR/FATAL levels
-   - Use batching to prevent spam
-   - Set up proper email templates
-   - Monitor delivery status
+4. **Dashboard Performance**
+   - Set reasonable `maxLogs` limits for memory usage
+   - Use date filtering for large historical log sets
+   - Configure appropriate `logFolder` paths
+   - Monitor dashboard response times with large files
+   - Enable real-time updates only when needed
+
+5. **Email Alerts**
+   - Only for ERROR/FATAL levels to avoid spam
+   - Use batching to prevent email flooding
+   - Set up proper email templates with context
+   - Monitor delivery status and bounce rates
+   - Test email configuration in staging environments
+
+6. **Earth-Tone Dashboard Usage**
+   - Take advantage of the clean, minimal interface design
+   - Use date filtering to efficiently browse historical logs
+   - Leverage the responsive design on mobile devices
+   - Utilize the search and filter capabilities effectively
 
 ## 🤝 Contributing
 

@@ -19,7 +19,7 @@ A beautiful, secure, real-time log viewing dashboard with system monitoring that
 
 ### 1. Enable Dashboard in Logger Configuration
 
-```javascript
+```typescript
 const logger = createLogger({
   dashboard: {
     enabled: true,
@@ -32,7 +32,7 @@ const logger = createLogger({
 ### 2. Add Middleware to Your Server
 
 #### Express
-```javascript
+```typescript
 const express = require('express');
 const app = express();
 
@@ -43,7 +43,7 @@ if (logger.dashboard) {
 ```
 
 #### Raw Node.js HTTP
-```javascript
+```typescript
 const server = http.createServer((req, res) => {
   logger.dashboard.middleware()(req, res, () => {
     // Your regular request handling
@@ -52,7 +52,7 @@ const server = http.createServer((req, res) => {
 ```
 
 #### Koa
-```javascript
+```typescript
 app.use(async (ctx, next) => {
   await new Promise((resolve) => {
     logger.dashboard.middleware()(ctx.req, ctx.res, resolve);
@@ -63,7 +63,7 @@ app.use(async (ctx, next) => {
 
 ## Configuration Options
 
-```javascript
+```typescript
 dashboard: {
   enabled: true,              // Enable dashboard
   path: '/admin/logs',        // URL path (default: '/logs')
@@ -125,9 +125,9 @@ dashboard: {
 
 ### Example 1: Multi-User Authentication with System Metrics
 
-```javascript
+```typescript
 const express = require('express');
-const { createLogger, FileTransport } = require('loggerverse');
+import { createLogger, FileTransport } from 'loggerverse';
 
 const app = express();
 
@@ -171,7 +171,7 @@ app.listen(3000, () => {
 
 ### Example 2: Custom Authentication Function
 
-```javascript
+```typescript
 const logger = createLogger({
   dashboard: {
     enabled: true,
@@ -192,7 +192,7 @@ const logger = createLogger({
 ## Security Considerations
 
 1. **Always use strong passwords in production**
-   ```javascript
+   ```typescript
    users: [
      {
        username: 'admin',
@@ -212,7 +212,7 @@ const logger = createLogger({
 4. **Consider rate limiting** to prevent brute force attacks
 
 5. **Restrict access by IP** if needed
-   ```javascript
+   ```typescript
    authenticate: async (req) => {
      const allowedIPs = ['192.168.1.1', '10.0.0.1'];
      return allowedIPs.includes(req.ip);

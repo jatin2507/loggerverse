@@ -3,7 +3,15 @@ import * as path from 'path';
 import * as url from 'url';
 import * as crypto from 'crypto';
 import { IncomingMessage, ServerResponse } from 'http';
-import type { LogEntry, Logger, DashboardUser } from '../types/index.js';
+import type {
+  LogEntry,
+  Logger,
+  DashboardUser,
+  DashboardRequest,
+  DashboardResponse,
+  DashboardNext,
+  DashboardMiddleware
+} from '../types/index.js';
 
 // Dynamic import for systeminformation
 let si: any = null;
@@ -18,7 +26,7 @@ export interface DashboardConfig {
   path?: string;
   logFolder?: string;
   realtime?: boolean;
-  authenticate?: (req: IncomingMessage) => Promise<boolean> | boolean;
+  authenticate?: (req: DashboardRequest) => Promise<boolean> | boolean;
   users?: DashboardUser[]; // Multiple users
   maxLogs?: number;
   title?: string;
@@ -42,7 +50,7 @@ interface LoginAttempt {
 
 export class LogDashboard {
   private config: Required<Omit<DashboardConfig, 'authenticate' | 'users'>> & {
-    authenticate?: (req: IncomingMessage) => Promise<boolean> | boolean;
+    authenticate?: (req: DashboardRequest) => Promise<boolean> | boolean;
     users?: DashboardUser[];
   };
   private recentLogs: LogEntry[] = [];
@@ -179,11 +187,12 @@ export class LogDashboard {
   }
 
   // Get session from cookie
-  private getSession(req: IncomingMessage): Session | null {
+  private getSession(req: DashboardRequest): Session | null {
+    if (!req.headers) return null;
     const cookieHeader = req.headers.cookie;
-    if (!cookieHeader) return null;
+    if (!cookieHeader || Array.isArray(cookieHeader)) return null;
 
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+    const cookies = cookieHeader.split(';').reduce((acc: Record<string, string>, cookie: string) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
       return acc;
@@ -271,9 +280,9 @@ export class LogDashboard {
   }
 
   // Express/Connect middleware
-  middleware() {
-    return async (req: IncomingMessage, res: ServerResponse, next?: () => void) => {
-      const parsedUrl = url.parse(req.url || '', true);
+  middleware(): DashboardMiddleware {
+    return async (req: DashboardRequest, res: DashboardResponse, next?: DashboardNext) => {
+      const parsedUrl = url.parse((req as any).url || '', true);
       const pathname = parsedUrl.pathname || '';
 
       // Check if this request is for the dashboard
@@ -355,6 +364,8 @@ export class LogDashboard {
         await this.serveDashboard(req, res);
       } else if (route === '/api/logs') {
         await this.serveLogs(req, res, parsedUrl.query);
+      } else if (route === '/api/dates') {
+        await this.serveAvailableDates(req, res);
       } else if (route === '/api/metrics' && this.config.showMetrics) {
         await this.serveMetrics(req, res);
       } else if (route === '/api/stream' && this.config.realtime) {
@@ -367,14 +378,14 @@ export class LogDashboard {
   }
 
   // Serve login page
-  private async serveLoginPage(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async serveLoginPage(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     const html = this.renderLoginPage();
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
   }
 
   // Handle login
-  private async handleLogin(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async handleLogin(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     if (req.method !== 'POST') {
       res.writeHead(405, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -382,11 +393,11 @@ export class LogDashboard {
     }
 
     // Get client IP for rate limiting
-    const clientIP = req.socket.remoteAddress || 'unknown';
+    const clientIP = (req as any).socket?.remoteAddress || 'unknown';
 
     let body = '';
-    req.on('data', chunk => body += chunk.toString());
-    req.on('end', () => {
+    (req as any).on('data', (chunk: any) => body += chunk.toString());
+    (req as any).on('end', () => {
       try {
         const { username, password } = JSON.parse(body);
 
@@ -475,7 +486,7 @@ export class LogDashboard {
   }
 
   // Handle logout
-  private async handleLogout(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async handleLogout(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     const session = this.getSession(req);
     if (session) {
       this.sessions.delete(session.id);
@@ -489,13 +500,13 @@ export class LogDashboard {
   }
 
   // Serve metrics
-  private async serveMetrics(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async serveMetrics(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(this.metricsCache || {}));
   }
 
   // Serve the main dashboard HTML
-  private async serveDashboard(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async serveDashboard(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     const session = this.getSession(req);
     const html = this.renderTemplate('dashboard', {
       title: this.config.title,
@@ -513,7 +524,7 @@ export class LogDashboard {
   }
 
   // Serve log data as JSON
-  private async serveLogs(req: IncomingMessage, res: ServerResponse, query: any): Promise<void> {
+  private async serveLogs(req: DashboardRequest, res: DashboardResponse, query: any): Promise<void> {
     const { source = 'memory', date, level, search } = query;
 
     let logs: LogEntry[] = [];
@@ -542,8 +553,15 @@ export class LogDashboard {
     res.end(JSON.stringify(logs));
   }
 
+  // Serve available dates
+  private async serveAvailableDates(req: DashboardRequest, res: DashboardResponse): Promise<void> {
+    const dates = this.getAvailableLogDates();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(dates));
+  }
+
   // Stream logs using Server-Sent Events
-  private async streamLogs(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  private async streamLogs(req: DashboardRequest, res: DashboardResponse): Promise<void> {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -576,7 +594,7 @@ export class LogDashboard {
   }
 
   // Serve static files (CSS/JS)
-  private async serveStatic(req: IncomingMessage, res: ServerResponse, route: string): Promise<void> {
+  private async serveStatic(req: DashboardRequest, res: DashboardResponse, route: string): Promise<void> {
     const file = route.substring('/static/'.length);
     let content = '';
     let contentType = 'text/plain';
@@ -602,50 +620,129 @@ export class LogDashboard {
     const logs: LogEntry[] = [];
 
     try {
+      if (!fs.existsSync(this.config.logFolder)) {
+        return logs;
+      }
+
       const files = fs.readdirSync(this.config.logFolder);
-      const logFiles = files.filter(file => {
-        if (date) {
-          return file.includes(date);
-        }
-        return file.startsWith('app-') && (file.endsWith('.log') || file.endsWith('.json'));
-      });
+      let logFiles = files.filter(file =>
+        file.endsWith('.log') || file.endsWith('.json')
+      );
 
-      for (const file of logFiles.slice(-5)) { // Last 5 files
+      // Filter by date if specified
+      if (date) {
+        logFiles = logFiles.filter(file => file.includes(date));
+      } else {
+        // Sort files by date (newest first) and take last 10
+        logFiles = logFiles
+          .sort((a, b) => {
+            const statA = fs.statSync(path.join(this.config.logFolder, a));
+            const statB = fs.statSync(path.join(this.config.logFolder, b));
+            return statB.mtime.getTime() - statA.mtime.getTime();
+          })
+          .slice(0, 10);
+      }
+
+      for (const file of logFiles) {
         const filePath = path.join(this.config.logFolder, file);
-        const content = fs.readFileSync(filePath, 'utf8');
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
 
-        if (file.endsWith('.json')) {
-          // Parse JSON logs
-          const lines = content.trim().split('\n');
-          for (const line of lines) {
-            if (line) {
-              try {
-                logs.push(JSON.parse(line));
-              } catch (e) {
-                // Skip invalid JSON
+          if (file.endsWith('.json')) {
+            // Parse JSON logs (NDJSON format)
+            const lines = content.trim().split('\n');
+            for (const line of lines) {
+              if (line.trim()) {
+                try {
+                  const logEntry = JSON.parse(line);
+                  // Ensure it has required fields
+                  if (logEntry.timestamp && logEntry.level && logEntry.message) {
+                    logs.push(logEntry);
+                  }
+                } catch (e) {
+                  // Skip invalid JSON lines
+                }
+              }
+            }
+          } else {
+            // Parse text logs (enhanced parsing)
+            const lines = content.trim().split('\n');
+            for (const line of lines) {
+              if (line.trim()) {
+                // Try to parse Loggerverse format first
+                const loggerverseMatch = line.match(/\[Loggerverse\]\s+(\S+)\s+([^[]+)\[([^\]]+)\]\s+\[([^\]]+)\]\s+(.*)/);
+                if (loggerverseMatch) {
+                  logs.push({
+                    timestamp: loggerverseMatch[2].trim(),
+                    level: loggerverseMatch[3].toLowerCase(),
+                    message: loggerverseMatch[5],
+                    meta: { source: 'file', context: loggerverseMatch[4] }
+                  } as LogEntry);
+                  continue;
+                }
+
+                // Fallback to generic timestamp parsing
+                const genericMatch = line.match(/(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}[^\]]*)\]?\s*\[([^\]]+)\]?\s*(.*)/);
+                if (genericMatch) {
+                  logs.push({
+                    timestamp: genericMatch[1],
+                    level: (genericMatch[2] || 'info').toLowerCase(),
+                    message: genericMatch[3] || line,
+                    meta: { source: 'file' }
+                  } as LogEntry);
+                }
               }
             }
           }
-        } else {
-          // Parse text logs (basic parsing)
-          const lines = content.trim().split('\n');
-          for (const line of lines) {
-            const match = line.match(/\[(.*?)\] \[(.*?)\].*?\] (.*)/);
-            if (match) {
-              logs.push({
-                timestamp: match[1],
-                level: match[2].toLowerCase() as any,
-                message: match[3]
-              } as LogEntry);
-            }
-          }
+        } catch (fileError) {
+          console.error(`Error reading log file ${file}:`, fileError);
         }
       }
+
+      // Sort logs by timestamp (newest first)
+      logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      // Limit results
+      return logs.slice(0, this.config.maxLogs);
     } catch (error) {
       console.error('Error reading log files:', error);
     }
 
     return logs;
+  }
+
+  // Get available log dates for filtering
+  private getAvailableLogDates(): string[] {
+    const dates: Set<string> = new Set();
+
+    try {
+      if (!fs.existsSync(this.config.logFolder)) {
+        return [];
+      }
+
+      const files = fs.readdirSync(this.config.logFolder);
+      const logFiles = files.filter(file =>
+        file.endsWith('.log') || file.endsWith('.json')
+      );
+
+      for (const file of logFiles) {
+        // Extract date from filename (assuming format like app-2023-12-25.log)
+        const dateMatch = file.match(/(\d{4}-\d{2}-\d{2})/);
+        if (dateMatch) {
+          dates.add(dateMatch[1]);
+        } else {
+          // Try to get date from file modification time
+          const filePath = path.join(this.config.logFolder, file);
+          const stat = fs.statSync(filePath);
+          const date = stat.mtime.toISOString().split('T')[0];
+          dates.add(date);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting available log dates:', error);
+    }
+
+    return Array.from(dates).sort().reverse(); // Most recent first
   }
 
   // Render login page
@@ -661,7 +758,7 @@ export class LogDashboard {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ccd5ae 0%, #e9edc9 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -669,14 +766,15 @@ export class LogDashboard {
             position: relative;
         }
         .login-container {
-            background: white;
+            background: #fefae0;
             padding: 2.5rem;
             border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(45, 74, 43, 0.15);
             width: 100%;
             max-width: 400px;
             position: relative;
             animation: slideUp 0.4s ease-out;
+            border: 1px solid #e9edc9;
         }
         @keyframes slideUp {
             from {
@@ -695,11 +793,11 @@ export class LogDashboard {
         .login-header h1 {
             font-size: 1.75rem;
             font-weight: 600;
-            color: #1a202c;
+            color: #2d4a2b;
             margin-bottom: 0.5rem;
         }
         .login-header p {
-            color: #718096;
+            color: #5a6b47;
             font-size: 0.9rem;
         }
         .form-group {
@@ -708,33 +806,33 @@ export class LogDashboard {
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
-            color: #4a5568;
+            color: #2d4a2b;
             font-weight: 500;
             font-size: 0.875rem;
         }
         .form-group input {
             width: 100%;
             padding: 0.75rem 1rem;
-            background: #f7fafc;
-            border: 2px solid #e2e8f0;
+            background: #faedcd;
+            border: 2px solid #e9edc9;
             border-radius: 8px;
             font-size: 1rem;
-            color: #2d3748;
+            color: #2d4a2b;
             transition: all 0.2s;
         }
         .form-group input::placeholder {
-            color: #a0aec0;
+            color: #7a8471;
         }
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #ccd5ae;
+            background: #fefae0;
+            box-shadow: 0 0 0 3px rgba(204, 213, 174, 0.1);
         }
         .btn-login {
             width: 100%;
             padding: 0.875rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ccd5ae 0%, #b8c497 100%);
             color: white;
             border: none;
             border-radius: 8px;
@@ -742,24 +840,26 @@ export class LogDashboard {
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 6px rgba(45, 74, 43, 0.11), 0 1px 3px rgba(45, 74, 43, 0.08);
         }
         .btn-login:hover {
+            background: linear-gradient(135deg, #b8c497 0%, #a8b589 100%);
             transform: translateY(-2px);
-            box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 7px 14px rgba(45, 74, 43, 0.1), 0 3px 6px rgba(45, 74, 43, 0.08);
         }
         .btn-login:active {
             transform: translateY(0);
         }
         .error-message {
-            background: #fed7d7;
-            color: #c53030;
+            background: #faedcd;
+            color: #8b5a3c;
             padding: 0.75rem 1rem;
             border-radius: 6px;
             margin-bottom: 1.25rem;
             display: none;
             font-size: 0.875rem;
             animation: shake 0.4s;
+            border: 1px solid #e9edc9;
         }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
@@ -770,14 +870,14 @@ export class LogDashboard {
             width: 60px;
             height: 60px;
             margin: 0 auto 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ccd5ae 0%, #b8c497 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.5rem;
             color: white;
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 25px rgba(204, 213, 174, 0.3);
         }
     </style>
 </head>
@@ -879,14 +979,16 @@ export class LogDashboard {
                     <option value="memory">Recent Logs</option>
                     <option value="file">File Logs</option>
                 </select>
+                <select id="logDate" style="display: none;">
+                    <option value="">All Dates</option>
+                </select>
                 <input type="text" id="searchBox" placeholder="Search logs...">
-                <button id="refreshBtn">🔄 Refresh</button>
+                <button id="refreshBtn">Refresh</button>
             </div>
         </header>
         ${data.showMetrics ? `
         <div class="metrics-container">
             <div class="metric-card">
-                <div class="metric-icon" style="background: linear-gradient(135deg, #667eea, #5a67d8); color: white; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">⚡</div>
                 <div class="metric-content">
                     <div class="metric-label">CPU Usage</div>
                     <div class="metric-value" id="cpuUsage">--</div>
@@ -896,27 +998,24 @@ export class LogDashboard {
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon" style="background: linear-gradient(135deg, #f687b3, #d53f8c); color: white; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">◉</div>
                 <div class="metric-content">
                     <div class="metric-label">Memory Usage</div>
                     <div class="metric-value" id="memUsage">--</div>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" id="memBar" style="background: linear-gradient(135deg, #f687b3, #d53f8c);"></div>
+                        <div class="metric-bar-fill" id="memBar"></div>
                     </div>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon" style="background: linear-gradient(135deg, #48bb78, #38a169); color: white; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">◈</div>
                 <div class="metric-content">
                     <div class="metric-label">Disk Usage</div>
                     <div class="metric-value" id="diskUsage">--</div>
                     <div class="metric-bar">
-                        <div class="metric-bar-fill" id="diskBar" style="background: linear-gradient(135deg, #48bb78, #38a169);"></div>
+                        <div class="metric-bar-fill" id="diskBar"></div>
                     </div>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon" style="background: linear-gradient(135deg, #ed8936, #dd6b20); color: white; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">⬢</div>
                 <div class="metric-content">
                     <div class="metric-label">System Info</div>
                     <div class="metric-value small" id="sysInfo">--</div>
@@ -949,24 +1048,38 @@ export class LogDashboard {
   private getDashboardCSS(): string {
     return `
 :root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --bg-card: #ffffff;
-    --text-primary: #1a202c;
-    --text-secondary: #718096;
-    --border: #e2e8f0;
-    --accent: #667eea;
-    --accent-light: #7f9cf5;
-    --accent-dark: #5a67d8;
-    --debug: #9f7aea;
-    --info: #4299e1;
-    --warn: #f6ad55;
-    --error: #fc8181;
-    --fatal: #f56565;
-    --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --sage-green: #ccd5ae;     /* Main accent color */
+    --light-sage: #e9edc9;     /* Light background */
+    --cream: #fefae0;          /* Primary background */
+    --warm-cream: #faedcd;     /* Secondary background */
+
+    --bg-primary: #fefae0;     /* Cream background */
+    --bg-secondary: #faedcd;   /* Warm cream for cards */
+    --bg-card: #faedcd;        /* Card backgrounds */
+    --bg-hover: #e9edc9;       /* Light sage for hover states */
+
+    --text-primary: #2d4a2b;   /* Dark green for primary text */
+    --text-secondary: #5a6b47; /* Medium green for secondary text */
+    --text-muted: #7a8471;     /* Muted green for less important text */
+    --text-light: #ffffff;     /* White text for dark backgrounds */
+
+    --border: #e9edc9;         /* Light sage borders */
+    --border-light: #f5f7f0;   /* Very light borders */
+    --border-accent: #ccd5ae;  /* Sage green accent borders */
+
+    --accent: #ccd5ae;         /* Sage green accent */
+    --accent-light: #d7ddb8;   /* Lighter sage */
+    --accent-dark: #b8c497;    /* Darker sage */
+
+    --debug: #7a8471;
+    --info: #5a6b47;
+    --warn: #8b7355;
+    --error: #8b5a3c;
+    --fatal: #7a4d3a;
+
+    --shadow-sm: 0 1px 2px 0 rgba(45, 74, 43, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(45, 74, 43, 0.1), 0 2px 4px -1px rgba(45, 74, 43, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(45, 74, 43, 0.1), 0 4px 6px -2px rgba(45, 74, 43, 0.05);
 }
 
 * {
@@ -1034,20 +1147,20 @@ header {
 }
 
 .logout-btn {
-    padding: 0.5rem 1.25rem;
-    background: var(--gradient);
-    color: white;
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    color: var(--text-light);
     text-decoration: none;
     border-radius: 6px;
     font-weight: 500;
     font-size: 0.875rem;
     transition: all 0.2s;
-    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--accent);
 }
 
 .logout-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
 }
 
 .controls {
@@ -1058,7 +1171,7 @@ header {
 
 .controls select, .controls input, .controls button {
     padding: 0.625rem 1rem;
-    background: white;
+    background: var(--bg-secondary);
     border: 1px solid var(--border);
     color: var(--text-primary);
     border-radius: 6px;
@@ -1069,7 +1182,8 @@ header {
 .controls select:focus, .controls input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: var(--bg-hover);
+    box-shadow: 0 0 0 3px rgba(204, 213, 174, 0.1);
 }
 
 .controls input {
@@ -1081,13 +1195,13 @@ header {
     cursor: pointer;
     font-weight: 500;
     background: var(--accent);
-    color: white;
+    color: var(--text-light);
     border-color: var(--accent);
 }
 
 .controls button:hover {
     background: var(--accent-dark);
-    transform: translateY(-1px);
+    border-color: var(--accent-dark);
     box-shadow: var(--shadow-md);
 }
 
@@ -1108,7 +1222,7 @@ header {
     display: flex;
     gap: 1rem;
     padding: 1.25rem;
-    background: rgba(30, 37, 48, 0.9);
+    background: var(--bg-card);
     border-radius: 8px;
     border: 1px solid var(--border);
     transition: all 0.2s;
@@ -1117,8 +1231,9 @@ header {
 
 .metric-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 20px rgba(90, 108, 125, 0.3);
-    background: rgba(30, 37, 48, 1);
+    box-shadow: var(--shadow-md);
+    background: var(--bg-hover);
+    border-color: var(--border-accent);
 }
 
 .metric-icon {
@@ -1212,19 +1327,21 @@ main {
 .log-entry {
     padding: 0.875rem 1rem;
     margin-bottom: 0.75rem;
-    background: #f7fafc;
+    background: var(--bg-card);
     border-radius: 6px;
     border-left: 3px solid var(--border);
     font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
     font-size: 0.875rem;
     line-height: 1.5;
     transition: all 0.2s;
+    border: 1px solid var(--border-light);
 }
 
 .log-entry:hover {
-    background: white;
+    background: var(--bg-hover);
     transform: translateX(4px);
     box-shadow: var(--shadow-sm);
+    border-color: var(--border);
 }
 
 .log-entry.debug { border-left-color: var(--debug); }
@@ -1233,7 +1350,7 @@ main {
 .log-entry.error { border-left-color: var(--error); }
 .log-entry.fatal {
     border-left-color: var(--fatal);
-    background: #fff5f5;
+    background: var(--warm-cream);
 }
 
 .log-timestamp {
@@ -1297,8 +1414,9 @@ async function loadLogs() {
     const level = document.getElementById('logLevel').value;
     const source = document.getElementById('logSource').value;
     const search = document.getElementById('searchBox').value;
+    const date = document.getElementById('logDate').value;
 
-    const params = new URLSearchParams({ level, source, search }).toString();
+    const params = new URLSearchParams({ level, source, search, date }).toString();
     const response = await fetch(\`\${apiPath}/logs?\${params}\`);
     const logs = await response.json();
 
@@ -1371,13 +1489,47 @@ async function loadMetrics() {
     }
 }
 
-// Streaming functionality has been removed for stability
-// Use the Refresh button to get latest logs
+// Load available dates for file logs
+async function loadAvailableDates() {
+    try {
+        const response = await fetch(\`\${apiPath}/dates\`);
+        const dates = await response.json();
+
+        const dateSelect = document.getElementById('logDate');
+        // Clear existing options except "All Dates"
+        dateSelect.innerHTML = '<option value="">All Dates</option>';
+
+        dates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            dateSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading dates:', error);
+    }
+}
+
+// Show/hide date selector based on log source
+function handleSourceChange() {
+    const source = document.getElementById('logSource').value;
+    const dateSelect = document.getElementById('logDate');
+
+    if (source === 'file') {
+        dateSelect.style.display = 'block';
+        loadAvailableDates();
+    } else {
+        dateSelect.style.display = 'none';
+        dateSelect.value = '';
+    }
+    loadLogs();
+}
 
 // Event listeners
 document.getElementById('refreshBtn').addEventListener('click', loadLogs);
 document.getElementById('logLevel').addEventListener('change', loadLogs);
-document.getElementById('logSource').addEventListener('change', loadLogs);
+document.getElementById('logSource').addEventListener('change', handleSourceChange);
+document.getElementById('logDate').addEventListener('change', loadLogs);
 document.getElementById('searchBox').addEventListener('input', loadLogs);
 
 // Streaming functionality removed for stability

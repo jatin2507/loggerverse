@@ -15,8 +15,8 @@ Loggerverse provides a powerful email transport that supports both SMTP and AWS 
 
 ### SMTP Configuration (Gmail, Outlook, etc.)
 
-```javascript
-const { createLogger, EmailTransport } = require('loggerverse');
+```typescript
+import { createLogger, EmailTransport } from 'loggerverse';
 
 const logger = createLogger({
   transports: [
@@ -47,7 +47,7 @@ const logger = createLogger({
 
 ### AWS SES Configuration
 
-```javascript
+```typescript
 const logger = createLogger({
   transports: [
     new EmailTransport({
@@ -76,7 +76,7 @@ const logger = createLogger({
 
 ### Core Settings
 
-```javascript
+```typescript
 {
   // Provider type
   provider: 'smtp' | 'ses',  // Required
@@ -101,7 +101,7 @@ const logger = createLogger({
 
 Prevent email flooding with configurable rate limits:
 
-```javascript
+```typescript
 {
   rateLimit: {
     maxEmails: 10,          // Maximum emails allowed
@@ -114,7 +114,7 @@ Prevent email flooding with configurable rate limits:
 
 Combine multiple logs into single emails:
 
-```javascript
+```typescript
 {
   batch: {
     enabled: true,          // Enable batching
@@ -128,7 +128,7 @@ Combine multiple logs into single emails:
 
 Customize email appearance:
 
-```javascript
+```typescript
 {
   templates: {
     // Custom subject line
@@ -154,7 +154,7 @@ Customize email appearance:
 ### SMTP Providers
 
 #### Gmail
-```javascript
+```typescript
 smtp: {
   host: 'smtp.gmail.com',
   port: 587,
@@ -167,7 +167,7 @@ smtp: {
 ```
 
 #### Outlook/Office365
-```javascript
+```typescript
 smtp: {
   host: 'smtp.office365.com',
   port: 587,
@@ -180,7 +180,7 @@ smtp: {
 ```
 
 #### SendGrid
-```javascript
+```typescript
 smtp: {
   host: 'smtp.sendgrid.net',
   port: 587,
@@ -192,7 +192,7 @@ smtp: {
 ```
 
 #### Custom SMTP Server
-```javascript
+```typescript
 smtp: {
   host: 'mail.your-domain.com',
   port: 587,
@@ -210,7 +210,7 @@ smtp: {
 ### AWS SES
 
 #### With IAM Role (Recommended for EC2/Lambda)
-```javascript
+```typescript
 ses: {
   region: 'us-east-1'
   // Credentials automatically loaded from IAM role
@@ -218,7 +218,7 @@ ses: {
 ```
 
 #### With Access Keys
-```javascript
+```typescript
 ses: {
   region: 'us-east-1',
   accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
@@ -247,8 +247,8 @@ ses: {
 
 ### Production Setup with Error Alerts
 
-```javascript
-const { createLogger, EmailTransport, FileTransport } = require('loggerverse');
+```typescript
+import { createLogger, EmailTransport, FileTransport } from 'loggerverse';
 
 const logger = createLogger({
   transports: [
@@ -311,7 +311,7 @@ logger.error('Database connection failed', {
 
 ### AWS Lambda with SES
 
-```javascript
+```typescript
 const logger = createLogger({
   transports: [
     new EmailTransport({
@@ -354,7 +354,7 @@ exports.handler = async (event) => {
 
 ### Development with Warnings
 
-```javascript
+```typescript
 const logger = createLogger({
   transports: [
     new EmailTransport({
@@ -401,7 +401,7 @@ The default HTML template provides:
 
 ### Custom Template Example
 
-```javascript
+```typescript
 templates: {
   html: (entries) => {
     const logs = entries.map(e => `
@@ -428,7 +428,7 @@ templates: {
 
 ### 1. Use Environment Variables
 
-```javascript
+```typescript
 smtp: {
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -443,7 +443,7 @@ smtp: {
 
 Always configure rate limits to prevent email flooding:
 
-```javascript
+```typescript
 rateLimit: {
   maxEmails: 10,
   periodMinutes: 60
@@ -452,7 +452,7 @@ rateLimit: {
 
 ### 3. Use Batching for High-Volume Logs
 
-```javascript
+```typescript
 batch: {
   enabled: true,
   maxBatchSize: 10,
@@ -462,7 +462,7 @@ batch: {
 
 ### 4. Different Configs for Different Environments
 
-```javascript
+```typescript
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 const emailConfig = isDevelopment ? {
@@ -476,7 +476,7 @@ const emailConfig = isDevelopment ? {
 
 ### 5. Test Email Configuration
 
-```javascript
+```typescript
 // Test your email configuration
 logger.error('Test email alert', {
   test: true,

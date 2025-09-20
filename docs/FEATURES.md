@@ -17,7 +17,7 @@
 - ✅ Support for both text and JSON formats
 
 ### Simple Usage
-```javascript
+```typescript
 new FileTransport({
   logFolder: './logs',      // That's it!
   rotationDays: 7,          // Keep for 7 days (optional)
@@ -52,7 +52,7 @@ new FileTransport({
 
 ## Configuration Example
 
-```javascript
+```typescript
 const logger = createLogger({
   // Dashboard with authentication and metrics
   dashboard: {
@@ -133,8 +133,8 @@ yarn add loggerverse
 
 ## Quick Start
 
-```javascript
-const { createLogger, FileTransport } = require('loggerverse');
+```typescript
+import { createLogger, FileTransport } from 'loggerverse';
 
 // Create logger with all features
 const logger = createLogger({

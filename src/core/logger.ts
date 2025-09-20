@@ -87,6 +87,10 @@ export class LoggerverseLogger implements Logger {
     this.consoleOverride.restore();
   }
 
+  isConsoleOverridden(): boolean {
+    return this.consoleOverride.isActive();
+  }
+
   private log(level: LogLevel, message: string, meta?: Record<string, any>): void {
     if (!this.shouldLog(level)) {
       return;
@@ -136,7 +140,7 @@ export class LoggerverseLogger implements Logger {
       } catch (error) {
         // Use original console.error to avoid infinite recursion
         const originalError = this.consoleOverride?.isActive()
-          ? (console as any).__original_error || console.error
+          ? (console as Console & { __original_error?: Function }).__original_error || console.error
           : console.error;
         originalError(`Transport ${transport.name} failed:`, error);
       }

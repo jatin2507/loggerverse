@@ -54,15 +54,16 @@ logger.error('Payment processing failed', {
 
 ```typescript
 // main.js or index.ts
-import { setupConsoleLogger } from 'loggerverse';
+import { createLogger, LogLevel } from 'loggerverse';
 
 // Setup once at application startup
-setupConsoleLogger({
-  level: 'info',
+const logger = createLogger({
+  level: LogLevel.INFO,
   context: {
     service: 'user-service',
     version: '1.2.3'
-  }
+  },
+  overrideConsole: true
 });
 
 // Now all your existing console calls work with enhanced logging
@@ -112,10 +113,12 @@ console.warn('This uses original console.warn');
 ### 5. Request Tracing
 
 ```typescript
-import { setupConsoleLogger } from 'loggerverse';
+import { createLogger } from 'loggerverse';
 import { v4 as uuidv4 } from 'uuid';
 
-const logger = setupConsoleLogger();
+const logger = createLogger({
+  overrideConsole: true
+});
 
 // Express.js middleware
 function requestLogger(req, res, next) {
@@ -343,10 +346,10 @@ console.error('This error goes to all three transports');
 ### 10. Production Configuration
 
 ```typescript
-import { setupConsoleLogger, LogLevel } from 'loggerverse';
+import { createLogger, LogLevel } from 'loggerverse';
 
 // Production logging setup
-const logger = setupConsoleLogger({
+const logger = createLogger({
   level: process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.INFO,
 
   context: {
@@ -455,15 +458,16 @@ describe('User Service', () => {
 
 ```typescript
 import express from 'express';
-import { setupConsoleLogger } from 'loggerverse';
+import { createLogger } from 'loggerverse';
 import { v4 as uuidv4 } from 'uuid';
 
 const app = express();
 
 // Setup logger
-const logger = setupConsoleLogger({
+const logger = createLogger({
   context: { service: 'web-api' },
-  sanitization: { redactKeys: ['password', 'authorization'] }
+  sanitization: { redactKeys: ['password', 'authorization'] },
+  overrideConsole: true
 });
 
 // Request logging middleware
@@ -506,10 +510,11 @@ app.post('/users', (req, res) => {
 ### 13. Database Operation Logging
 
 ```typescript
-import { setupConsoleLogger } from 'loggerverse';
+import { createLogger } from 'loggerverse';
 
-setupConsoleLogger({
-  context: { module: 'database' }
+const logger = createLogger({
+  context: { module: 'database' },
+  overrideConsole: true
 });
 
 class UserRepository {

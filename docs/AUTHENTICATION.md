@@ -55,7 +55,9 @@ The Loggerverse Dashboard provides a secure, web-based interface for viewing and
 
 ### Basic Configuration
 
-```javascript
+```typescript
+import { createLogger, LogLevel } from 'loggerverse';
+
 const logger = createLogger({
   dashboard: {
     enabled: true,
@@ -130,7 +132,7 @@ graph TD
 
 ### 2. Login Process
 
-```javascript
+```typescript
 // POST /logs/api/login
 {
   "username": "admin",
@@ -177,7 +179,7 @@ Protects against brute-force attacks:
 - **Lockout Period**: 15 minutes after maximum attempts reached
 - **Reset**: Successful login or timeout resets the counter
 
-```javascript
+```typescript
 // After 5 failed attempts
 {
   "error": "Too many failed attempts. Please try again in 15 minutes."
@@ -226,9 +228,9 @@ Protects against brute-force attacks:
 
 ### Middleware Integration
 
-```javascript
-const express = require('express');
-const { createLogger } = require('loggerverse');
+```typescript
+import express from 'express';
+import { createLogger } from 'loggerverse';
 
 const app = express();
 
@@ -249,7 +251,9 @@ app.use(logger.dashboard.middleware());
 
 ### 1. Basic Authentication Setup
 
-```javascript
+```typescript
+import { createLogger } from 'loggerverse';
+
 const logger = createLogger({
   dashboard: {
     enabled: true,
@@ -268,7 +272,9 @@ const logger = createLogger({
 
 ### 2. Multiple Users with Roles
 
-```javascript
+```typescript
+import { createLogger } from 'loggerverse';
+
 const logger = createLogger({
   dashboard: {
     enabled: true,
@@ -284,13 +290,15 @@ const logger = createLogger({
 
 ### 3. Custom Authentication Function
 
-```javascript
+```typescript
+import { createLogger, DashboardRequest } from 'loggerverse';
+
 const logger = createLogger({
   dashboard: {
     enabled: true,
-    authenticate: async (req) => {
+    authenticate: async (req: DashboardRequest) => {
       // Custom authentication logic
-      const token = req.headers.authorization;
+      const token = req.headers?.authorization;
       return await validateToken(token);
     }
   }
@@ -299,13 +307,15 @@ const logger = createLogger({
 
 ### 4. Production Configuration
 
-```javascript
+```typescript
+import { createLogger } from 'loggerverse';
+
 const logger = createLogger({
   dashboard: {
     enabled: process.env.NODE_ENV === 'production',
     path: process.env.DASHBOARD_PATH || '/secure-logs',
     users: JSON.parse(process.env.DASHBOARD_USERS || '[]'),
-    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT) || 30,
+    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '30') || 30,
     maxLogs: 5000,
     showMetrics: true
   }
@@ -321,7 +331,7 @@ const logger = createLogger({
 **Problem**: Users can access the dashboard without logging in.
 
 **Solution**: Ensure users are configured:
-```javascript
+```typescript
 dashboard: {
   enabled: true,
   users: [  // This MUST be defined
@@ -344,7 +354,7 @@ dashboard: {
 **Problem**: Users are logged out frequently.
 
 **Solution**: Increase session timeout:
-```javascript
+```typescript
 dashboard: {
   sessionTimeout: 120 // 2 hours
 }
@@ -368,7 +378,9 @@ dashboard: {
 
 Enable debug logging to troubleshoot issues:
 
-```javascript
+```typescript
+import { createLogger, LogLevel } from 'loggerverse';
+
 const logger = createLogger({
   level: LogLevel.DEBUG,
   dashboard: {
@@ -389,7 +401,7 @@ const logger = createLogger({
 
 **Never** commit passwords to version control:
 
-```javascript
+```typescript
 // BAD - Don't do this
 users: [
   { username: 'admin', password: 'admin123' }
@@ -398,8 +410,8 @@ users: [
 // GOOD - Use environment variables
 users: [
   {
-    username: process.env.ADMIN_USER,
-    password: process.env.ADMIN_PASS
+    username: process.env.ADMIN_USER!,
+    password: process.env.ADMIN_PASS!
   }
 ]
 ```
@@ -408,7 +420,7 @@ users: [
 
 Always use HTTPS in production:
 
-```javascript
+```typescript
 // Ensure secure cookies in production
 if (process.env.NODE_ENV === 'production') {
   app.use(forceSSL());
@@ -432,7 +444,7 @@ Enforce strong password requirements:
 
 Adjust rate limiting based on your needs:
 
-```javascript
+```typescript
 // Custom rate limiting (future feature)
 dashboard: {
   rateLimit: {
@@ -447,7 +459,7 @@ dashboard: {
 ### From No Authentication to Authentication
 
 1. **Add users configuration**:
-```javascript
+```typescript
 // Before
 dashboard: { enabled: true }
 

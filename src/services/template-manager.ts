@@ -44,19 +44,27 @@ export class TemplateManager {
    * Register Handlebars partials
    */
   private registerPartials(): void {
-    const partialsDir = path.join(this.templateDir, 'partials');
+    try {
+      const partialsDir = path.join(this.templateDir, 'partials');
 
-    if (fs.existsSync(partialsDir)) {
-      const files = fs.readdirSync(partialsDir);
+      if (fs.existsSync(partialsDir)) {
+        const files = fs.readdirSync(partialsDir);
 
-      files.forEach(file => {
-        if (file.endsWith('.hbs')) {
-          const name = path.basename(file, '.hbs');
-          const content = fs.readFileSync(path.join(partialsDir, file), 'utf8');
-          this.partials.set(name, content);
-          Handlebars.registerPartial(name, content);
-        }
-      });
+        files.forEach(file => {
+          try {
+            if (file.endsWith('.hbs')) {
+              const name = path.basename(file, '.hbs');
+              const content = fs.readFileSync(path.join(partialsDir, file), 'utf8');
+              this.partials.set(name, content);
+              Handlebars.registerPartial(name, content);
+            }
+          } catch (error) {
+            console.warn(`Failed to register partial ${file}:`, error);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to register partials:', error);
     }
   }
 
@@ -119,18 +127,26 @@ export class TemplateManager {
    * Compile layout templates
    */
   private compileLayouts(): void {
-    const layoutsDir = path.join(this.templateDir, 'layouts');
+    try {
+      const layoutsDir = path.join(this.templateDir, 'layouts');
 
-    if (fs.existsSync(layoutsDir)) {
-      const files = fs.readdirSync(layoutsDir);
+      if (fs.existsSync(layoutsDir)) {
+        const files = fs.readdirSync(layoutsDir);
 
-      files.forEach(file => {
-        if (file.endsWith('.hbs')) {
-          const name = path.basename(file, '.hbs');
-          const content = fs.readFileSync(path.join(layoutsDir, file), 'utf8');
-          this.layouts.set(name, Handlebars.compile(content));
-        }
-      });
+        files.forEach(file => {
+          try {
+            if (file.endsWith('.hbs')) {
+              const name = path.basename(file, '.hbs');
+              const content = fs.readFileSync(path.join(layoutsDir, file), 'utf8');
+              this.layouts.set(name, Handlebars.compile(content));
+            }
+          } catch (error) {
+            console.warn(`Failed to compile layout ${file}:`, error);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to compile layouts:', error);
     }
   }
 
@@ -138,18 +154,26 @@ export class TemplateManager {
    * Compile dashboard templates
    */
   private compileTemplates(): void {
-    const dashboardDir = path.join(this.templateDir, 'dashboard');
+    try {
+      const dashboardDir = path.join(this.templateDir, 'dashboard');
 
-    if (fs.existsSync(dashboardDir)) {
-      const files = fs.readdirSync(dashboardDir);
+      if (fs.existsSync(dashboardDir)) {
+        const files = fs.readdirSync(dashboardDir);
 
-      files.forEach(file => {
-        if (file.endsWith('.hbs')) {
-          const name = path.basename(file, '.hbs');
-          const content = fs.readFileSync(path.join(dashboardDir, file), 'utf8');
-          this.templates.set(name, Handlebars.compile(content));
-        }
-      });
+        files.forEach(file => {
+          try {
+            if (file.endsWith('.hbs')) {
+              const name = path.basename(file, '.hbs');
+              const content = fs.readFileSync(path.join(dashboardDir, file), 'utf8');
+              this.templates.set(name, Handlebars.compile(content));
+            }
+          } catch (error) {
+            console.warn(`Failed to compile template ${file}:`, error);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to compile templates:', error);
     }
   }
 

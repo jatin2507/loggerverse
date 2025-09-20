@@ -5,16 +5,53 @@ import { promisify } from 'util';
 import type { Transport, LogEntry } from '../types/index.js';
 
 export interface FileTransportConfig {
-  // Simple configuration - just specify folder and rotation preferences
-  logFolder: string; // Folder where logs will be stored
-  rotationDays?: number; // How many days to keep logs before rotating, default 1
-  compressAfterDays?: number; // After how many days to compress old logs, default 7
-  format?: 'json' | 'text'; // log format, default 'text'
+  // Directory for log files
+  logFolder: string;
+
+  // Base filename (optional, defaults to 'app')
+  filename?: string;
+
+  // Date pattern for rotation (uses moment.js format)
+  datePattern?: string;
+
+  // Maximum size before rotation (bytes)
+  maxFileSize?: number;
+
+  // Maximum number of log files to keep
+  maxFiles?: number;
+
+  // Compress logs older than X days
+  compressAfterDays?: number;
+
+  // Separate files by log level
+  separateByLevel?: boolean;
+
+  // Include timestamp in filename
+  includeTimestamp?: boolean;
+
+  // Custom filename format function
+  getFilename?: (date: string, level?: string) => string;
+
+  // Log format
+  format?: 'json' | 'text';
+
+  // Legacy support - rotationDays for backward compatibility
+  rotationDays?: number;
 }
 
 export class FileTransport implements Transport {
   public readonly name = 'file';
-  private config: Required<FileTransportConfig>;
+  private config: FileTransportConfig & {
+    filename: string;
+    datePattern: string;
+    maxFileSize: number;
+    maxFiles: number;
+    compressAfterDays: number;
+    separateByLevel: boolean;
+    includeTimestamp: boolean;
+    format: 'json' | 'text';
+    rotationDays: number;
+  };
   private writeStream: fs.WriteStream | null = null;
   private currentLogFile: string = '';
   private compressionInterval: NodeJS.Timeout | null = null;
@@ -23,9 +60,15 @@ export class FileTransport implements Transport {
 
   constructor(config: FileTransportConfig) {
     this.config = {
-      rotationDays: config.rotationDays ?? 1,
+      filename: config.filename ?? 'app',
+      datePattern: config.datePattern ?? 'YYYY-MM-DD',
+      maxFileSize: config.maxFileSize ?? 10 * 1024 * 1024, // 10MB
+      maxFiles: config.maxFiles ?? 30,
       compressAfterDays: config.compressAfterDays ?? 7,
+      separateByLevel: config.separateByLevel ?? false,
+      includeTimestamp: config.includeTimestamp ?? true,
       format: config.format ?? 'text',
+      rotationDays: config.rotationDays ?? 1,
       ...config
     };
 
@@ -44,7 +87,21 @@ export class FileTransport implements Transport {
     const today = new Date();
     const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
     const ext = this.config.format === 'json' ? '.json' : '.log';
-    return path.join(this.config.logFolder, `app-${dateStr}${ext}`);
+
+    // Use custom filename function if provided
+    if (this.config.getFilename) {
+      const customFilename = this.config.getFilename(dateStr);
+      return path.join(this.config.logFolder, customFilename);
+    }
+
+    // Build filename based on configuration
+    let filename = this.config.filename || 'app';
+
+    if (this.config.includeTimestamp) {
+      filename += `-${dateStr}`;
+    }
+
+    return path.join(this.config.logFolder, `${filename}${ext}`);
   }
 
   private initializeWriteStream(): void {
@@ -70,17 +127,40 @@ export class FileTransport implements Transport {
   private async cleanupOldFiles(): Promise<void> {
     try {
       const files = fs.readdirSync(this.config.logFolder);
-      const logFiles = files.filter(file => file.startsWith('app-') && (file.endsWith('.log') || file.endsWith('.json')));
+      const filename = this.config.filename || 'app';
+      const logFiles = files.filter(file =>
+        file.startsWith(`${filename}-`) &&
+        (file.endsWith('.log') || file.endsWith('.json'))
+      );
 
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - this.config.rotationDays);
+      // Use maxFiles for rotation if specified, otherwise use rotationDays
+      if (this.config.maxFiles && this.config.maxFiles > 0) {
+        // Sort files by modification time (newest first)
+        const fileStats = logFiles.map(file => ({
+          name: file,
+          path: path.join(this.config.logFolder, file),
+          mtime: fs.statSync(path.join(this.config.logFolder, file)).mtime
+        })).sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-      for (const file of logFiles) {
-        const filePath = path.join(this.config.logFolder, file);
-        const stats = fs.statSync(filePath);
+        // Remove files beyond maxFiles limit
+        if (fileStats.length > this.config.maxFiles) {
+          const filesToDelete = fileStats.slice(this.config.maxFiles);
+          for (const file of filesToDelete) {
+            fs.unlinkSync(file.path);
+          }
+        }
+      } else {
+        // Use rotationDays for cleanup
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - this.config.rotationDays);
 
-        if (stats.mtime < cutoffDate) {
-          fs.unlinkSync(filePath);
+        for (const file of logFiles) {
+          const filePath = path.join(this.config.logFolder, file);
+          const stats = fs.statSync(filePath);
+
+          if (stats.mtime < cutoffDate) {
+            fs.unlinkSync(filePath);
+          }
         }
       }
     } catch (error) {
@@ -91,8 +171,9 @@ export class FileTransport implements Transport {
   private async compressOldFiles(): Promise<void> {
     try {
       const files = fs.readdirSync(this.config.logFolder);
+      const filename = this.config.filename || 'app';
       const logFiles = files.filter(file =>
-        file.startsWith('app-') &&
+        file.startsWith(`${filename}-`) &&
         (file.endsWith('.log') || file.endsWith('.json')) &&
         !file.endsWith('.gz')
       );

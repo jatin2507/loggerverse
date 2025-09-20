@@ -34,7 +34,7 @@ export class ConsoleOverride {
       if (this.config.preserveOriginal) {
         this.originalConsole[method] = console[method];
         // Store original methods on console object for emergency fallback
-        (console as any)[`__original_${method}`] = console[method];
+        (console as Console & Record<string, any>)[`__original_${method}`] = console[method];
       }
 
       switch (method) {
@@ -117,7 +117,7 @@ export class ConsoleOverride {
                       level === 'error' ? LogLevel.ERROR :
                       level === 'debug' ? LogLevel.DEBUG :
                       LogLevel.INFO;
-      (this.logger as any).logDirect(logLevel, logMessage, meta);
+      (this.logger as Logger & { logDirect: (level: LogLevel, message: string, meta?: Record<string, any>) => void }).logDirect(logLevel, logMessage, meta);
     } catch (error) {
       // Fallback to original console if available
       const originalMethod = level === 'log' ? 'log' :
