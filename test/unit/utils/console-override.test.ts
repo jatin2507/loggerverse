@@ -256,7 +256,7 @@ describe('Console Override', () => {
           message: 'Message with params',
           meta: expect.objectContaining({
             param_0: 123,
-            name: 'value',
+            param_1_object: { name: 'value' },
             param_2_array: [1, 2, 3]
           })
         })

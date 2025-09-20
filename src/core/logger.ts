@@ -98,13 +98,14 @@ export class LoggerverseLogger implements Logger {
 
     const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) : undefined;
     const currentContext = this.buildContext();
+    const sanitizedContext = Object.keys(currentContext).length > 0 ? this.sanitizer.sanitize(currentContext) : undefined;
 
     const entry: LogEntry = {
       level,
       message,
       meta: sanitizedMeta,
       timestamp: new Date().toISOString(),
-      context: Object.keys(currentContext).length > 0 ? currentContext : undefined
+      context: sanitizedContext
     };
 
     this.logToTransports(entry);
@@ -118,13 +119,14 @@ export class LoggerverseLogger implements Logger {
 
     const currentContext = this.buildContext();
     const sanitizedMeta = meta ? this.sanitizer.sanitize(meta) : undefined;
+    const sanitizedContext = Object.keys(currentContext).length > 0 ? this.sanitizer.sanitize(currentContext) : undefined;
 
     const entry: LogEntry = {
       level,
       message,
       meta: sanitizedMeta,
       timestamp: new Date().toISOString(),
-      context: Object.keys(currentContext).length > 0 ? currentContext : undefined
+      context: sanitizedContext
     };
 
     // For console override, throw errors instead of catching them

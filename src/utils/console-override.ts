@@ -133,12 +133,19 @@ export class ConsoleOverride {
   private parseOptionalParams(params: any[]): Record<string, any> {
     const meta: Record<string, any> = {};
 
+    // If there's only one parameter and it's an object, merge it directly
+    // This handles the common case of logger.info("message", { key: "value" })
+    if (params.length === 1 && typeof params[0] === 'object' && params[0] !== null && !Array.isArray(params[0])) {
+      return params[0];
+    }
+
+    // Otherwise, handle multiple parameters or non-object parameters
     params.forEach((param, index) => {
       if (typeof param === 'object' && param !== null) {
         if (Array.isArray(param)) {
           meta[`param_${index}_array`] = param;
         } else {
-          Object.assign(meta, param);
+          meta[`param_${index}_object`] = param;
         }
       } else {
         meta[`param_${index}`] = param;
