@@ -1566,6 +1566,7 @@ let logsInterval = null;
 let isAutoRefreshEnabled = true;
 // Global set to track all seen log IDs and prevent duplicates
 const globalSeenLogIds = new Set();
+const clearedLogIds = new Set(); // Track logs that were manually cleared
 // Track if user manually interacted to avoid conflicts
 let userInteracting = false;
 
@@ -1616,8 +1617,8 @@ function displayLogs(logs, isAutoRefresh = false) {
         for (const log of sortedLogs) {
             const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
 
-            // Only add truly new logs (not seen before)
-            if (!globalSeenLogIds.has(id)) {
+            // Only add truly new logs (not seen before and not cleared)
+            if (!globalSeenLogIds.has(id) && !clearedLogIds.has(id)) {
                 newLogs.push(log);
                 globalSeenLogIds.add(id);
             }
@@ -1661,7 +1662,8 @@ function displayLogs(logs, isAutoRefresh = false) {
         for (const log of sortedLogs) {
             const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
 
-            if (!currentLogIds.has(id)) {
+            // Skip cleared logs and duplicates
+            if (!currentLogIds.has(id) && !clearedLogIds.has(id)) {
                 uniqueLogs.push(log);
                 globalSeenLogIds.add(id);
                 currentLogIds.add(id);
@@ -1834,6 +1836,19 @@ function updateRefreshIndicator(status = 'success') {
 // Clear logs function
 function clearLogs() {
     const container = document.getElementById('logContainer');
+
+    // Store currently visible logs as cleared
+    const logEntries = container.querySelectorAll('.log-entry');
+    logEntries.forEach(entry => {
+        const logId = entry.getAttribute('data-log-id');
+        if (logId) {
+            clearedLogIds.add(logId);
+        }
+    });
+
+    // Also mark all currently seen logs as cleared
+    globalSeenLogIds.forEach(id => clearedLogIds.add(id));
+
     container.innerHTML = '<div class="loading">Logs cleared</div>';
     globalSeenLogIds.clear();
 
@@ -1846,10 +1861,30 @@ function clearLogs() {
 }
 
 // Event listeners
+let refreshClickCount = 0;
+let refreshClickTimer = null;
+
 document.getElementById('refreshBtn').addEventListener('click', () => {
     userInteracting = true;
-    loadLogs();
-    setTimeout(() => userInteracting = false, 1000); // Reset after 1 second
+    refreshClickCount++;
+
+    if (refreshClickTimer) {
+        clearTimeout(refreshClickTimer);
+    }
+
+    refreshClickTimer = setTimeout(() => {
+        if (refreshClickCount === 1) {
+            // Single click: normal refresh
+            loadLogs();
+        } else if (refreshClickCount >= 2) {
+            // Double click: restore cleared logs and refresh
+            clearedLogIds.clear();
+            loadLogs();
+            console.log('Cleared logs restored');
+        }
+        refreshClickCount = 0;
+        setTimeout(() => userInteracting = false, 1000);
+    }, 300); // 300ms window for double click
 });
 
 document.getElementById('logLevel').addEventListener('change', () => {
