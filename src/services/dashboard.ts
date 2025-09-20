@@ -758,7 +758,7 @@ export class LogDashboard {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #ccd5ae 0%, #e9edc9 100%);
+            background: #edede9;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -766,9 +766,11 @@ export class LogDashboard {
             position: relative;
         }
         .login-container {
-            background: #fefae0;
+            background: #ffffff;
             padding: 2.5rem;
             border-radius: 12px;
+            border: 1px solid #d4d6d0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             box-shadow: 0 20px 60px rgba(45, 74, 43, 0.15);
             width: 100%;
             max-width: 400px;
@@ -813,11 +815,11 @@ export class LogDashboard {
         .form-group input {
             width: 100%;
             padding: 0.75rem 1rem;
-            background: #faedcd;
-            border: 2px solid #e9edc9;
+            background: #f8f9fa;
+            border: 2px solid #d4d6d0;
             border-radius: 8px;
             font-size: 1rem;
-            color: #2d4a2b;
+            color: #1a202c;
             transition: all 0.2s;
         }
         .form-group input::placeholder {
@@ -1053,17 +1055,17 @@ export class LogDashboard {
     --cream: #fefae0;          /* Primary background */
     --warm-cream: #faedcd;     /* Secondary background */
 
-    --bg-primary: #fefae0;     /* Cream background */
-    --bg-secondary: #faedcd;   /* Warm cream for cards */
-    --bg-card: #faedcd;        /* Card backgrounds */
-    --bg-hover: #e9edc9;       /* Light sage for hover states */
+    --bg-primary: #edede9;     /* Light beige background */
+    --bg-secondary: #ffffff;   /* White for cards */
+    --bg-card: #ffffff;        /* Card backgrounds */
+    --bg-hover: #e2e8e0;       /* Light green-gray for hover states */
 
-    --text-primary: #2d4a2b;   /* Dark green for primary text */
-    --text-secondary: #5a6b47; /* Medium green for secondary text */
-    --text-muted: #7a8471;     /* Muted green for less important text */
+    --text-primary: #1a202c;   /* Dark gray for primary text */
+    --text-secondary: #4a5568; /* Medium gray for secondary text */
+    --text-muted: #718096;     /* Muted gray for less important text */
     --text-light: #ffffff;     /* White text for dark backgrounds */
 
-    --border: #e9edc9;         /* Light sage borders */
+    --border: #d4d6d0;         /* Light beige borders */
     --border-light: #f5f7f0;   /* Very light borders */
     --border-accent: #ccd5ae;  /* Sage green accent borders */
 
@@ -1219,6 +1221,11 @@ header {
 }
 
 .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     display: flex;
     gap: 1rem;
     padding: 1.25rem;
@@ -1247,14 +1254,18 @@ header {
 
 .metric-label {
     color: var(--text-secondary);
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
 }
 
 .metric-value {
-    font-size: 1.5rem;
-    font-weight: bold;
+    font-size: 1.75rem;
+    font-weight: 700;
     color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .metric-value.small {
@@ -1264,16 +1275,21 @@ header {
 
 .metric-bar {
     margin-top: 0.5rem;
-    height: 6px;
-    background: #edf2f7;
-    border-radius: 3px;
+    height: 8px;
+    background: #d4d6d0;
+    border-radius: 4px;
     overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    position: relative;
 }
 
 .metric-bar-fill {
     height: 100%;
-    background: var(--gradient);
-    transition: width 0.5s ease;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     border-radius: 3px;
 }
 

@@ -97,7 +97,10 @@ export class FileTransport implements Transport {
     // Build filename based on configuration
     let filename = this.config.filename || 'app';
 
-    if (this.config.includeTimestamp) {
+    // Handle %DATE% placeholder in filename
+    if (filename.includes('%DATE%')) {
+      filename = filename.replace('%DATE%', dateStr);
+    } else if (this.config.includeTimestamp) {
       filename += `-${dateStr}`;
     }
 
@@ -128,10 +131,23 @@ export class FileTransport implements Transport {
     try {
       const files = fs.readdirSync(this.config.logFolder);
       const filename = this.config.filename || 'app';
-      const logFiles = files.filter(file =>
-        file.startsWith(`${filename}-`) &&
-        (file.endsWith('.log') || file.endsWith('.json'))
-      );
+
+      // Handle %DATE% pattern in filename for cleanup
+      let filePattern = filename;
+      if (filename.includes('%DATE%')) {
+        filePattern = filename.replace('%DATE%', '');
+      }
+
+      const logFiles = files.filter(file => {
+        if (filename.includes('%DATE%')) {
+          // For %DATE% pattern, match files that contain the base pattern
+          const basePattern = filename.replace('%DATE%', '');
+          return file.includes(basePattern) && (file.endsWith('.log') || file.endsWith('.json'));
+        } else {
+          // Original logic for non-%DATE% patterns
+          return file.startsWith(`${filename}-`) && (file.endsWith('.log') || file.endsWith('.json'));
+        }
+      });
 
       // Use maxFiles for rotation if specified, otherwise use rotationDays
       if (this.config.maxFiles && this.config.maxFiles > 0) {
