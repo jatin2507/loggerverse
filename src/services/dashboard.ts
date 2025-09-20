@@ -987,6 +987,7 @@ export class LogDashboard {
                 <input type="text" id="searchBox" placeholder="Search logs...">
                 <button id="refreshBtn">Refresh</button>
                 <button id="autoRefreshBtn" class="auto-refresh-btn active">⏸️ Pause Auto-Refresh</button>
+                <button id="clearLogsBtn" class="clear-logs-btn">🗑️ Clear Logs</button>
                 <div id="refreshIndicator" class="refresh-indicator active">🟢 Live</div>
             </div>
         </header>
@@ -1226,6 +1227,18 @@ header {
 .auto-refresh-btn:not(.active) {
     background: #6b7280 !important;
     border-color: #6b7280 !important;
+}
+
+/* Clear logs button */
+.clear-logs-btn {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: white !important;
+}
+
+.clear-logs-btn:hover {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
 }
 
 .refresh-indicator {
@@ -1586,72 +1599,104 @@ function displayLogs(logs, isAutoRefresh = false) {
     const container = document.getElementById('logContainer');
 
     if (logs.length === 0) {
-        container.innerHTML = '<div class="loading">No logs found</div>';
-        globalSeenLogIds.clear(); // Clear seen IDs when no logs
+        if (!isAutoRefresh) {
+            container.innerHTML = '<div class="loading">No logs found</div>';
+            globalSeenLogIds.clear(); // Clear seen IDs when no logs
+        }
         return;
     }
 
-    // Handle deduplication differently for auto-refresh vs manual refresh
-    if (!isAutoRefresh) {
-        // Manual refresh: clear all seen IDs and display all logs
-        globalSeenLogIds.clear();
-    }
-
-    // Sort logs by timestamp (newest first) and deduplicate
+    // Sort logs by timestamp (newest first)
     const sortedLogs = logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    const uniqueLogs = [];
-    const currentLogIds = new Set();
 
-    for (const log of sortedLogs) {
-        const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
+    if (isAutoRefresh) {
+        // For auto-refresh: keep existing logs and only add new ones at the top
+        const newLogs = [];
 
-        if (isAutoRefresh) {
-            // For auto-refresh: only add truly new logs (not seen before)
+        for (const log of sortedLogs) {
+            const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
+
+            // Only add truly new logs (not seen before)
             if (!globalSeenLogIds.has(id)) {
-                uniqueLogs.push(log);
+                newLogs.push(log);
                 globalSeenLogIds.add(id);
-                currentLogIds.add(id);
             }
-        } else {
-            // For manual refresh: dedupe within current batch only
+        }
+
+        // Add new logs to the top of existing content
+        if (newLogs.length > 0) {
+            const currentLogCount = container.querySelectorAll('.log-entry').length;
+            const newLogsHtml = newLogs.map((log, index) => {
+                const globalIndex = currentLogCount + index; // Use global index for unique IDs
+                const hasMetaOrContext = log.meta || log.context;
+                const metaContent = log.meta ? JSON.stringify(log.meta, null, 2) : '';
+                const contextContent = log.context ? JSON.stringify(log.context, null, 2) : '';
+
+                return '<div class="log-entry ' + log.level + '" data-log-id="' + (log._id || '') + '">' +
+                    '<div class="log-header">' +
+                        '<span class="log-timestamp">' + (log.timestamp || 'N/A') + '</span>' +
+                        '<span class="log-level ' + log.level + '">' + log.level + '</span>' +
+                        '<span class="log-message">' + log.message + '</span>' +
+                        (hasMetaOrContext ? '<button class="collapse-btn" onclick="toggleLogDetails(' + globalIndex + ')" title="Toggle details">' +
+                            '<span class="collapse-icon" id="icon-' + globalIndex + '">▼</span>' +
+                        '</button>' : '') +
+                    '</div>' +
+                    (hasMetaOrContext ?
+                    '<div class="log-details" id="details-' + globalIndex + '" style="display: none;">' +
+                        (log.meta ? '<div class="log-meta"><strong>Meta:</strong><pre>' + metaContent + '</pre></div>' : '') +
+                        (log.context ? '<div class="log-context"><strong>Context:</strong><pre>' + contextContent + '</pre></div>' : '') +
+                    '</div>' : '') +
+                '</div>';
+            }).join('');
+
+            // Prepend new logs to the top
+            container.innerHTML = newLogsHtml + container.innerHTML;
+        }
+    } else {
+        // For manual refresh: clear everything and show all logs
+        globalSeenLogIds.clear();
+        const uniqueLogs = [];
+        const currentLogIds = new Set();
+
+        for (const log of sortedLogs) {
+            const id = log._id || (log.timestamp + '_' + log.level + '_' + log.message);
+
             if (!currentLogIds.has(id)) {
                 uniqueLogs.push(log);
                 globalSeenLogIds.add(id);
                 currentLogIds.add(id);
             }
         }
+
+        container.innerHTML = uniqueLogs.map((log, index) => {
+            const hasMetaOrContext = log.meta || log.context;
+            const metaContent = log.meta ? JSON.stringify(log.meta, null, 2) : '';
+            const contextContent = log.context ? JSON.stringify(log.context, null, 2) : '';
+
+            return '<div class="log-entry ' + log.level + '" data-log-id="' + (log._id || '') + '">' +
+                '<div class="log-header">' +
+                    '<span class="log-timestamp">' + (log.timestamp || 'N/A') + '</span>' +
+                    '<span class="log-level ' + log.level + '">' + log.level + '</span>' +
+                    '<span class="log-message">' + log.message + '</span>' +
+                    (hasMetaOrContext ? '<button class="collapse-btn" onclick="toggleLogDetails(' + index + ')" title="Toggle details">' +
+                        '<span class="collapse-icon" id="icon-' + index + '">▼</span>' +
+                    '</button>' : '') +
+                '</div>' +
+                (hasMetaOrContext ?
+                '<div class="log-details" id="details-' + index + '" style="display: none;">' +
+                    (log.meta ? '<div class="log-meta"><strong>Meta:</strong><pre>' + metaContent + '</pre></div>' : '') +
+                    (log.context ? '<div class="log-context"><strong>Context:</strong><pre>' + contextContent + '</pre></div>' : '') +
+                '</div>' : '') +
+            '</div>';
+        }).join('');
     }
-
-    container.innerHTML = uniqueLogs.map((log, index) => {
-        const hasMetaOrContext = log.meta || log.context;
-        const metaContent = log.meta ? JSON.stringify(log.meta, null, 2) : '';
-        const contextContent = log.context ? JSON.stringify(log.context, null, 2) : '';
-
-        return \`
-        <div class="log-entry \${log.level}" data-log-id="\${log._id || ''}">
-            <div class="log-header">
-                <span class="log-timestamp">\${log.timestamp || 'N/A'}</span>
-                <span class="log-level \${log.level}">\${log.level}</span>
-                <span class="log-message">\${log.message}</span>
-                \${hasMetaOrContext ? \`<button class="collapse-btn" onclick="toggleLogDetails(\${index})" title="Toggle details">
-                    <span class="collapse-icon" id="icon-\${index}">▼</span>
-                </button>\` : ''}
-            </div>
-            \${hasMetaOrContext ? \`
-            <div class="log-details" id="details-\${index}" style="display: none;">
-                \${log.meta ? \`<div class="log-meta"><strong>Meta:</strong><pre>\${metaContent}</pre></div>\` : ''}
-                \${log.context ? \`<div class="log-context"><strong>Context:</strong><pre>\${contextContent}</pre></div>\` : ''}
-            </div>\` : ''}
-        </div>
-        \`;
-    }).join('');
 }
 
 async function loadMetrics() {
     if (!showMetrics) return;
 
     try {
-        const response = await fetch(\`\${apiPath}/metrics\`);
+        const response = await fetch(apiPath + '/metrics');
         const metrics = await response.json();
 
         if (metrics.cpu) {
@@ -1660,14 +1705,14 @@ async function loadMetrics() {
         }
 
         if (metrics.memory) {
-            const memText = \`\${metrics.memory.used}GB / \${metrics.memory.total}GB (\${metrics.memory.percentage}%)\`;
+            const memText = metrics.memory.used + 'GB / ' + metrics.memory.total + 'GB (' + metrics.memory.percentage + '%)';
             document.getElementById('memUsage').textContent = memText;
             document.getElementById('memBar').style.width = metrics.memory.percentage + '%';
         }
 
         if (metrics.disk && metrics.disk[0]) {
             const disk = metrics.disk[0];
-            const diskText = \`\${disk.used}GB / \${disk.size}GB (\${disk.percentage}%)\`;
+            const diskText = disk.used + 'GB / ' + disk.size + 'GB (' + disk.percentage + '%)';
             document.getElementById('diskUsage').textContent = diskText;
             document.getElementById('diskBar').style.width = disk.percentage + '%';
         }
@@ -1786,6 +1831,20 @@ function updateRefreshIndicator(status = 'success') {
     }
 }
 
+// Clear logs function
+function clearLogs() {
+    const container = document.getElementById('logContainer');
+    container.innerHTML = '<div class="loading">Logs cleared</div>';
+    globalSeenLogIds.clear();
+
+    // Show a confirmation message briefly
+    setTimeout(() => {
+        if (container.innerHTML === '<div class="loading">Logs cleared</div>') {
+            container.innerHTML = '<div class="loading">No logs found</div>';
+        }
+    }, 1500);
+}
+
 // Event listeners
 document.getElementById('refreshBtn').addEventListener('click', () => {
     userInteracting = true;
@@ -1820,6 +1879,15 @@ document.getElementById('searchBox').addEventListener('input', () => {
 // Auto-refresh button
 if (document.getElementById('autoRefreshBtn')) {
     document.getElementById('autoRefreshBtn').addEventListener('click', toggleAutoRefresh);
+}
+
+// Clear logs button
+if (document.getElementById('clearLogsBtn')) {
+    document.getElementById('clearLogsBtn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all logs from the current view?')) {
+            clearLogs();
+        }
+    });
 }
 
 // Streaming functionality removed for stability
